@@ -1,4 +1,6 @@
 #include "Port.h"
+
+#include <cstring>
 #include "Connection.h"
 #include "Intersection.h"
 #include "../runtime/Behaviour.h"
