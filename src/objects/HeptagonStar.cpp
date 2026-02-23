@@ -1,12 +1,12 @@
 #include "HeptagonStar.h"
 
-uint16_t* HeptagonStar::getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) {
+uint16_t* HeptagonStar::getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) {
     uint8_t pathIndex = getStarSegmentIndex(pixel);
     float progress = getProgressOnStarSegment(pathIndex, pixel);
     uint8_t i = 1;
     mirrorPixels[0] = 0;
     if (mirrorFlipEmitter != NULL) {
-        if (mirrorFlipEmitter->getType() == LPOwner::TYPE_INTERSECTION) {
+        if (mirrorFlipEmitter->getType() == Owner::TYPE_INTERSECTION) {
             uint8_t emitterIndex = static_cast<Intersection*>(mirrorFlipEmitter)->id / 2;
             if (emitterIndex < 7) {
                 uint8_t mirrorIndex = ((emitterIndex + (emitterIndex - pathIndex) + 11) % 7);

@@ -2,8 +2,8 @@
 
 #include "../core/Types.h"
 #include "../core/Limits.h"
-#include "../LPRandom.h"
-#include "../topology/LPObject.h"
+#include "../Random.h"
+#include "../topology/TopologyObject.h"
 
 #define LINE_PIXEL_COUNT 300  // Line from pixel 0 to 287
 
@@ -14,23 +14,23 @@ enum LineModel {
     L_LAST = L_BOUNCE,
 };
 
-class Line : public LPObject {
+class Line : public TopologyObject {
 
   public:
   
-    Line(uint16_t pixelCount) : LPObject(pixelCount) {
+    Line(uint16_t pixelCount) : TopologyObject(pixelCount) {
         setup();
     }
     
     ~Line() override = default;
     
     bool isMirrorSupported() override { return true; }
-    uint16_t* getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) override;
+    uint16_t* getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) override;
     float getProgressOnLine(uint16_t pixel) const;
     uint16_t getPixelOnLine(float perc) const;
     
     EmitParams getModelParams(int model) const override {
-        return EmitParams(model % (LineModel::L_LAST + 1), LPRandom::randomSpeed());
+        return EmitParams(model % (LineModel::L_LAST + 1), Random::randomSpeed());
     }
 
   private:

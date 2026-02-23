@@ -20,7 +20,7 @@
 ### Refactor
 
 - Added `src/api/Engine.cpp` facade over legacy runtime/state internals.
-- Improved `LPObject` ownership handling using internal `std::unique_ptr` containers.
+- Improved `TopologyObject` ownership handling using internal `std::unique_ptr` containers.
 - Hardened runtime pixel access against out-of-range reads/writes in `State`.
 - Fixed `LightList` reallocation teardown to delete using allocated size.
 - Fixed undefined behavior in `Connection::render` index conversion/clamping.

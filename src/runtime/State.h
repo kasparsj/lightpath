@@ -6,12 +6,12 @@
 #include "../core/Limits.h"
 
 class EmitParams;
-class LPObject;
+class TopologyObject;
 class LightList;
 class Model;
 class Behaviour;
-class LPOwner;
-class LPLight;
+class Owner;
+class RuntimeLight;
 
 class State {
 
@@ -19,7 +19,7 @@ class State {
 
     static EmitParams autoParams;
 
-    LPObject &object;
+    TopologyObject &object;
     LightList *lightLists[MAX_LIGHT_LISTS] = {0};
     uint16_t totalLights = 0;
     uint8_t totalLightLists = 0;
@@ -33,7 +33,7 @@ class State {
     bool showIntersections = false;
     bool showConnections = false;
 
-    explicit State(LPObject &obj);
+    explicit State(TopologyObject &obj);
     ~State();
 
     uint8_t randomModel();
@@ -43,9 +43,9 @@ class State {
     void emit(LightList& lightList);
     int8_t getOrCreateList(EmitParams &params);
     int8_t setupListFrom(uint8_t i, EmitParams &params);
-    LPOwner* getEmitter(Model* model, Behaviour* behaviour, EmitParams& params);
+    Owner* getEmitter(Model* model, Behaviour* behaviour, EmitParams& params);
     void update();
-    void updateLight(LPLight* light);
+    void updateLight(RuntimeLight* light);
     void colorAll();
     void splitAll();
     void stopAll();
@@ -57,10 +57,10 @@ class State {
     bool isOn();
     void setOn(bool newState);
     void setupBg(uint8_t i);
-    void doEmit(LPOwner* from, LightList *lightList, uint8_t emitOffset = 0);
+    void doEmit(Owner* from, LightList *lightList, uint8_t emitOffset = 0);
 
   private:
-    void doEmit(LPOwner* from, LightList *lightList, EmitParams& params);
+    void doEmit(Owner* from, LightList *lightList, EmitParams& params);
     void setPixels(uint16_t pixel, ColorRGB &color, const LightList* const lightList);
     void setPixel(uint16_t pixel, ColorRGB &color, const LightList* const lightList);
 

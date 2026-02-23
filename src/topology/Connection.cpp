@@ -2,11 +2,11 @@
 #include <math.h>
 #include "Connection.h"
 #include "Intersection.h"
-#include "LPObject.h"
+#include "TopologyObject.h"
 #include "../runtime/Behaviour.h"
-#include "../runtime/LPLight.h"
+#include "../runtime/RuntimeLight.h"
 
-Connection::Connection(Intersection *from, Intersection *to, uint8_t group, int16_t forceNumLeds) : LPOwner(group) {
+Connection::Connection(Intersection *from, Intersection *to, uint8_t group, int16_t forceNumLeds) : Owner(group) {
   this->from = from;
   this->to = to;
   
@@ -22,7 +22,7 @@ Connection::Connection(Intersection *from, Intersection *to, uint8_t group, int1
     numLeds = forceNumLeds;
   } else {
     uint16_t diff = abs(fromPixel - toPixel);
-    uint16_t leds = diff > 4 && diff < (LPObject::instance->pixelCount - 4) ? diff + 1 : 0;
+    uint16_t leds = diff > 4 && diff < (TopologyObject::instance->pixelCount - 4) ? diff + 1 : 0;
     if (from->bottomPixel > -1) {
       if (abs(from->bottomPixel - to->topPixel) < leds) {
         pixelDir = to->topPixel > from->bottomPixel;
@@ -64,20 +64,20 @@ Connection::~Connection() {
   }
 }
 
-void Connection::add(LPLight* const light) const {
+void Connection::add(RuntimeLight* const light) const {
     if (numLeds > 0) {
-        LPOwner::add(light);
+        Owner::add(light);
     } else {
         outgoing(light);
     }
 }
 
-void Connection::emit(LPLight* const light) const {
+void Connection::emit(RuntimeLight* const light) const {
     light->setOutPort(fromPort, from->id);
     add(light);
 }
 
-void Connection::update(LPLight* const light) const {
+void Connection::update(RuntimeLight* const light) const {
     light->resetPixels();
     if (shouldExpire(light)) {
         light->isExpired = true;
@@ -90,13 +90,13 @@ void Connection::update(LPLight* const light) const {
     outgoing(light);
 }
 
-bool Connection::shouldExpire(const LPLight* const light) const {
+bool Connection::shouldExpire(const RuntimeLight* const light) const {
     const Behaviour *behaviour = light->getBehaviour();
     return (light->shouldExpire() &&
         (light->getSpeed() == 0 || (behaviour != NULL && behaviour->expireImmediately())));
 }
 
-bool Connection::render(LPLight* const light) const {
+bool Connection::render(RuntimeLight* const light) const {
     // handle float inprecision
     float pos = round(light->position * 1000) / 1000.0;
     if (numLeds > 0 && pos < numLeds) {
@@ -113,7 +113,7 @@ bool Connection::render(LPLight* const light) const {
     return false;
 }
 
-inline void Connection::outgoing(LPLight* const light) const {
+inline void Connection::outgoing(RuntimeLight* const light) const {
     light->position -= numLeds;
     const bool dir = light->outPort->direction;
     if (dir) {

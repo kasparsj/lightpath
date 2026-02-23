@@ -6,7 +6,7 @@
 /**
  * BgLight - A memory-efficient version of LightList specifically for background color
  *
- * This class extends LightList but doesn't maintain an array of LPLight objects.
+ * This class extends LightList but doesn't maintain an array of RuntimeLight objects.
  * Instead, it directly renders a single color to all LEDs, which is more memory
  * efficient for background lights.
  */

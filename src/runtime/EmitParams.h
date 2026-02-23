@@ -4,7 +4,7 @@
 #include <optional>
 #include "../core/Types.h"
 #include "../core/Limits.h"
-#include "../LPRandom.h"
+#include "../Random.h"
 #include <vector>
 #include "../rendering/Palette.h"
 
@@ -151,11 +151,11 @@ class EmitParams {
     }
     
     float getSpeed() const {
-        return speed >= 0 ? speed : LPRandom::randomSpeed();
+        return speed >= 0 ? speed : Random::randomSpeed();
     }
 
     uint16_t getLength() const {
-        return length.has_value() ? *length : LPRandom::randomLength();
+        return length.has_value() ? *length : Random::randomLength();
     }
     
     void setLength(uint16_t value) {
@@ -169,13 +169,13 @@ class EmitParams {
     uint16_t getSpeedTrail(float speed, uint16_t length) const {
       uint16_t trail = 0;
       if (order == LIST_ORDER_SEQUENTIAL && linked && !(behaviourFlags & B_RENDER_SEGMENT)) {
-        trail = min((int) (speed * max(1, length / 2)), LPRandom::MAX_LENGTH - 1);
+        trail = min((int) (speed * max(1, length / 2)), Random::MAX_LENGTH - 1);
       }
       return trail;
     }
     
     uint32_t getDuration() const {
-        return duration > 0 ? duration : LPRandom::randomDuration();
+        return duration > 0 ? duration : Random::randomDuration();
     }
     
     uint8_t getMaxBri() const {

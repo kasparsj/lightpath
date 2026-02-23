@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../../src/debug/LPDebugger.h"
+#include "debug/Debugger.h"
 
 /**
  * @file debug.hpp
@@ -9,6 +9,6 @@
 
 namespace lightpath::integration {
 
-using Debugger = ::LPDebugger;
+using Debugger = ::Debugger;
 
 } // namespace lightpath::integration

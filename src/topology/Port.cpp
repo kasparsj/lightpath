@@ -4,10 +4,10 @@
 #include "Connection.h"
 #include "Intersection.h"
 #include "../runtime/Behaviour.h"
-#include "../runtime/LPLight.h"
+#include "../runtime/RuntimeLight.h"
 
 // Initialize function pointer to null
-void (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, LPLight* const light, bool sendList) = nullptr;
+void (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, RuntimeLight* const light, bool sendList) = nullptr;
 
 // Initialize static members for Port pool
 Port* Port::portPool[Port::MAX_PORTS] = {nullptr};
@@ -69,19 +69,19 @@ ExternalPort::ExternalPort(Connection* connection, Intersection* intersection, b
     memcpy(this->device, device, 6);
 }
 
-void Port::handleColorChange(LPLight* const light) const {
+void Port::handleColorChange(RuntimeLight* const light) const {
     const Behaviour* behaviour = light->getBehaviour();
     if (behaviour->colorChangeGroups & group) {
         light->setColor(behaviour->getColor(light, group));
     }
 }
 
-void InternalPort::sendOut(LPLight* const light, bool /*sendList*/) {
+void InternalPort::sendOut(RuntimeLight* const light, bool /*sendList*/) {
     handleColorChange(light);
     connection->add(light);
 }
 
-void ExternalPort::sendOut(LPLight* const light, bool sendList) {
+void ExternalPort::sendOut(RuntimeLight* const light, bool sendList) {
     if (sendLightViaESPNow) {
         light->isExpired = true;
         sendLightViaESPNow(device, targetId, light, sendList);

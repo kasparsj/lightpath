@@ -3,7 +3,7 @@
 #include <cmath>
 
 #include "../core/Platform.h"
-#include "../topology/LPObject.h"
+#include "../topology/TopologyObject.h"
 #include "../topology/Model.h"
 #include "Behaviour.h"
 #include "BgLight.h"
@@ -17,7 +17,7 @@
 
 EmitParams State::autoParams(EmitParams::DEFAULT_MODEL, RANDOM_SPEED);
 
-State::State(LPObject& obj)
+State::State(TopologyObject& obj)
     : object(obj),
       pixelValuesR(obj.pixelCount, 0),
       pixelValuesG(obj.pixelCount, 0),
@@ -47,7 +47,7 @@ ColorRGB State::paletteColor(uint8_t index, uint8_t /*maxBrightness*/) {
 void State::autoEmit(unsigned long ms) {
     if (autoEnabled && nextEmit <= ms) {
         emit(autoParams);
-        nextEmit = ms + LPRandom::randomNextEmit();
+        nextEmit = ms + Random::randomNextEmit();
     }
 }
 
@@ -61,7 +61,7 @@ int8_t State::emit(EmitParams &params) {
     int8_t index = getOrCreateList(params);
     if (index > -1) {
         lightLists[index]->model = model;
-        LPOwner *emitter = getEmitter(model, lightLists[index]->behaviour, params);
+        Owner *emitter = getEmitter(model, lightLists[index]->behaviour, params);
         if (emitter == NULL) {
             LP_LOGF("emit failed, no free emitter %d %d.\n", params.getEmit(), params.getEmitGroups(model->emitGroups));
             return -1;
@@ -122,7 +122,7 @@ int8_t State::setupListFrom(uint8_t i, EmitParams &params) {
     return i;
 }
 
-LPOwner* State::getEmitter(Model* model, Behaviour* behaviour, EmitParams& params) {
+Owner* State::getEmitter(Model* model, Behaviour* behaviour, EmitParams& params) {
     if (model == NULL || behaviour == NULL) {
         return NULL;
     }
@@ -149,14 +149,14 @@ LPOwner* State::getEmitter(Model* model, Behaviour* behaviour, EmitParams& param
     }
 }
 
-void State::doEmit(LPOwner* from, LightList *lightList, uint8_t emitOffset) {
+void State::doEmit(Owner* from, LightList *lightList, uint8_t emitOffset) {
     lightList->initEmit(emitOffset);
     lightList->emitter = from;
     totalLights += lightList->numLights;
     totalLightLists++;
 }
 
-void State::doEmit(LPOwner* from, LightList *lightList, EmitParams& params) {
+void State::doEmit(Owner* from, LightList *lightList, EmitParams& params) {
     doEmit(from, lightList, params.emitOffset);
 }
 
@@ -195,7 +195,7 @@ void State::update() {
       else {
         // Normal light list processing
         for (uint16_t j=0; j<lightList->numLights; j++) {
-            LPLight* light = lightList->lights[j];
+            RuntimeLight* light = lightList->lights[j];
             if (light == NULL) continue;
             updateLight(light);
         }
@@ -204,7 +204,7 @@ void State::update() {
   }
 }
 
-void State::updateLight(LPLight* light) {
+void State::updateLight(RuntimeLight* light) {
     ColorRGB color = light->getPixelColor();
     // todo: perhaps it's OK to always retrieve pixels
     if (light->list->behaviour != NULL && (light->list->behaviour->renderSegment() || light->list->behaviour->fillEase())) {

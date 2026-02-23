@@ -2,13 +2,13 @@
 
 #include <cstdint>
 #include <vector>
-#include "LPOwner.h"
+#include "Owner.h"
 #include "Port.h"
 
 class Behaviour;
 class Model;
 
-class Intersection : public LPOwner {
+class Intersection : public Owner {
 
   public:
 
@@ -32,15 +32,15 @@ class Intersection : public LPOwner {
     uint8_t getType() override { return TYPE_INTERSECTION; };
     void addPort(Port *p);
     void removePort(const Port* p);
-    void emit(LPLight* const light) const override;
-    void update(LPLight* const light) const override;
+    void emit(RuntimeLight* const light) const override;
+    void update(RuntimeLight* const light) const override;
 
   private:
 
     uint16_t sumW(const Model* const model, const Port* const incoming) const;
     Port* randomPort(const Port* const incoming, const Behaviour* const behaviour) const;
-    Port* choosePort(const Model* const model, const LPLight* const light) const;
-    Port* getOutPortFor(const LPLight* const light) const;
-    Port* getPrevOutPort(const LPLight* const light) const;
+    Port* choosePort(const Model* const model, const RuntimeLight* const light) const;
+    Port* getOutPortFor(const RuntimeLight* const light) const;
+    Port* getPrevOutPort(const RuntimeLight* const light) const;
   
 };

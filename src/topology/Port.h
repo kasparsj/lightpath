@@ -4,7 +4,7 @@
 
 class Connection;
 class Intersection;
-class LPLight;
+class RuntimeLight;
 
 class Port {
 
@@ -17,7 +17,7 @@ class Port {
   
     Port(Connection* connection, Intersection* intersection, bool direction, uint8_t group);
     virtual ~Port();
-    virtual void sendOut(LPLight* const light, bool sendList = false) = 0;
+    virtual void sendOut(RuntimeLight* const light, bool sendList = false) = 0;
     virtual bool isExternal() const { return false; }
     
     // Static pool management
@@ -32,7 +32,7 @@ class Port {
         static uint8_t lastId = 0;
         return lastId++;
     }
-    void handleColorChange(LPLight* const light) const;
+    void handleColorChange(RuntimeLight* const light) const;
     
   private:
     static const uint8_t MAX_PORTS = 200;
@@ -45,7 +45,7 @@ class InternalPort : public Port {
     
     public:
         InternalPort(Connection* connection, Intersection* intersection, bool direction, uint8_t group);
-        virtual void sendOut(LPLight* const light, bool sendList = false) override;
+        virtual void sendOut(RuntimeLight* const light, bool sendList = false) override;
 };
 
 class ExternalPort : public Port {
@@ -55,9 +55,9 @@ class ExternalPort : public Port {
     uint8_t targetId;
     
     ExternalPort(Connection* connection, Intersection* intersection, bool direction, uint8_t group, uint8_t device[6]);
-    virtual void sendOut(LPLight* const light, bool sendList = false) override;
+    virtual void sendOut(RuntimeLight* const light, bool sendList = false) override;
     virtual bool isExternal() const override { return true; }
 };
 
 // Function pointer for optional ESP-NOW functionality
-extern void (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, LPLight* const light, bool sendList);
+extern void (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, RuntimeLight* const light, bool sendList);

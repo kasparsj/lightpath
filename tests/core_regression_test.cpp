@@ -45,13 +45,13 @@ uint8_t countConnectedPorts(const Intersection& intersection) {
     return used;
 }
 
-class SinglePixelObject : public LPObject {
+class SinglePixelObject : public TopologyObject {
   public:
-    SinglePixelObject() : LPObject(1) {
+    SinglePixelObject() : TopologyObject(1) {
         addModel(new Model(0, 10, GROUP1));
     }
 
-    uint16_t* getMirroredPixels(uint16_t, LPOwner*, bool) override {
+    uint16_t* getMirroredPixels(uint16_t, Owner*, bool) override {
         mirroredPixels[0] = 0;
         return mirroredPixels;
     }
@@ -149,10 +149,10 @@ int main() {
         }
 
         if (!object.removeConnection(initial)) {
-            return fail("LPObject::removeConnection(pointer) failed to remove an existing connection");
+            return fail("TopologyObject::removeConnection(pointer) failed to remove an existing connection");
         }
         if (!object.conn[0].empty()) {
-            return fail("LPObject::removeConnection(pointer) should erase connection from group list");
+            return fail("TopologyObject::removeConnection(pointer) should erase connection from group list");
         }
         if (countConnectedPorts(*from) != 0 || countConnectedPorts(*to) != 0) {
             return fail("Connection removal should clear ports from both endpoint intersections");
@@ -164,7 +164,7 @@ int main() {
         }
 
         if (!object.removeConnection(0, 0)) {
-            return fail("LPObject::removeConnection(group,index) failed for a valid connection slot");
+            return fail("TopologyObject::removeConnection(group,index) failed for a valid connection slot");
         }
         if (countConnectedPorts(*from) != 0 || countConnectedPorts(*to) != 0) {
             return fail("Indexed connection removal should also detach endpoint ports");

@@ -34,24 +34,24 @@ uint16_t defaultPixelCountFor(ObjectType type) {
     return LINE_PIXEL_COUNT;
 }
 
-std::unique_ptr<LPObject> makeObject(const EngineConfig& config) {
+std::unique_ptr<TopologyObject> makeObject(const EngineConfig& config) {
     const uint16_t pixel_count =
         config.pixel_count > 0 ? config.pixel_count : defaultPixelCountFor(config.object_type);
 
     switch (config.object_type) {
     case ObjectType::Heptagon919:
-        return std::unique_ptr<LPObject>(new Heptagon919());
+        return std::unique_ptr<TopologyObject>(new Heptagon919());
     case ObjectType::Heptagon3024:
-        return std::unique_ptr<LPObject>(new Heptagon3024());
+        return std::unique_ptr<TopologyObject>(new Heptagon3024());
     case ObjectType::Line:
-        return std::unique_ptr<LPObject>(new Line(pixel_count));
+        return std::unique_ptr<TopologyObject>(new Line(pixel_count));
     case ObjectType::Cross:
-        return std::unique_ptr<LPObject>(new Cross(pixel_count));
+        return std::unique_ptr<TopologyObject>(new Cross(pixel_count));
     case ObjectType::Triangle:
-        return std::unique_ptr<LPObject>(new Triangle(pixel_count));
+        return std::unique_ptr<TopologyObject>(new Triangle(pixel_count));
     }
 
-    return std::unique_ptr<LPObject>(new Line(pixel_count));
+    return std::unique_ptr<TopologyObject>(new Line(pixel_count));
 }
 
 } // namespace
@@ -74,7 +74,7 @@ struct Engine::Impl {
         return false;
     }
 
-    std::unique_ptr<LPObject> object;
+    std::unique_ptr<TopologyObject> object;
     State state;
     uint64_t now_millis;
     mutable std::mutex mutex;

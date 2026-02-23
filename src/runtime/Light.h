@@ -2,10 +2,10 @@
 
 #include <algorithm>
 
-#include "LPLight.h"
+#include "RuntimeLight.h"
 #include "../Globals.h"
 
-class Light : public LPLight {
+class Light : public RuntimeLight {
 
   public:
 

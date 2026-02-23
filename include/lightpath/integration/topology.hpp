@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../../src/HashMap.h"
-#include "../../../src/topology/LPOwner.h"
-#include "../../../src/topology/Port.h"
-#include "../../../src/topology/Weight.h"
-#include "../../../src/topology/Model.h"
-#include "../../../src/topology/Intersection.h"
-#include "../../../src/topology/Connection.h"
-#include "../../../src/topology/LPObject.h"
+#include "HashMap.h"
+#include "topology/Owner.h"
+#include "topology/Port.h"
+#include "topology/Weight.h"
+#include "topology/Model.h"
+#include "topology/Intersection.h"
+#include "topology/Connection.h"
+#include "topology/TopologyObject.h"
 
 /**
  * @file topology.hpp
@@ -16,7 +16,7 @@
 
 namespace lightpath::integration {
 
-using Owner = ::LPOwner;
+using Owner = ::Owner;
 using Port = ::Port;
 using InternalPort = ::InternalPort;
 using ExternalPort = ::ExternalPort;
@@ -24,7 +24,7 @@ using Weight = ::Weight;
 using Model = ::Model;
 using Intersection = ::Intersection;
 using Connection = ::Connection;
-using Object = ::LPObject;
+using Object = ::TopologyObject;
 using PixelGap = ::PixelGap;
 
 } // namespace lightpath::integration

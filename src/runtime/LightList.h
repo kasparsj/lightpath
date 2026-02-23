@@ -4,14 +4,14 @@
 #include "../core/Limits.h"
 #include "../ofxEasing.h"
 #include "Behaviour.h"
-#include "LPLight.h"
+#include "RuntimeLight.h"
 #include <stdexcept>
 #include <vector>
 #include "../rendering/Palette.h"
 
 class Model;
 class Light;
-class LPOwner;
+class Owner;
 
 typedef struct {
   uint8_t messageType;
@@ -53,8 +53,8 @@ class LightList {
     uint16_t numLights = 0;
     uint16_t lead = 0;
     uint16_t trail = 0;
-    LPLight **lights = 0;
-    LPOwner *emitter = 0;
+    RuntimeLight **lights = 0;
+    Owner *emitter = 0;
     uint16_t numEmitted = 0;
     uint8_t numSplits = 0;
     std::vector<ColorRGB> colors; // Vector of colors used for the actual lights
@@ -134,11 +134,11 @@ class LightList {
 
     float getBriMult(uint16_t i);
 
-    LPLight* operator [] (uint16_t i) const {
+    RuntimeLight* operator [] (uint16_t i) const {
       return lights[i];
     }
 
-    LPLight*& operator [] (uint16_t i) {
+    RuntimeLight*& operator [] (uint16_t i) {
       return lights[i];
     }
 
@@ -169,8 +169,8 @@ class LightList {
     void initEmit(uint8_t posOffset = 0);
     virtual bool update();
     void split();
-    float getPosition(LPLight* const light) const;
-    uint16_t getBri(const LPLight* light) const;
+    float getPosition(RuntimeLight* const light) const;
+    uint16_t getBri(const RuntimeLight* light) const;
     virtual ColorRGB getColor(int16_t /*pixel*/ = -1) const {
         throw std::runtime_error("LightList::getColor not implemented");
     }
@@ -192,14 +192,14 @@ class LightList {
     // Set the position of the light list (moves all lights by the offset)
     virtual void setOffset(float newPosition);
     
-    LPLight* addLightFromMsg(const LightMessage* lightMsg);
+    RuntimeLight* addLightFromMsg(const LightMessage* lightMsg);
 
   private:
 
-    LPLight* createLight(uint16_t i, uint8_t brightness);
-    void initPosition(uint16_t i, LPLight* const light) const;
-    void initBri(uint16_t i, LPLight* const light) const;
-    void initLife(uint16_t i, LPLight* const light) const;
+    RuntimeLight* createLight(uint16_t i, uint8_t brightness);
+    void initPosition(uint16_t i, RuntimeLight* const light) const;
+    void initBri(uint16_t i, RuntimeLight* const light) const;
+    void initLife(uint16_t i, RuntimeLight* const light) const;
     void doEmit();
     void setLightColors();
     inline uint16_t body() {

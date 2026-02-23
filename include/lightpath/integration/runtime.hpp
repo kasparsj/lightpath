@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../../../src/runtime/Behaviour.h"
-#include "../../../src/runtime/EmitParams.h"
-#include "../../../src/runtime/LPLight.h"
-#include "../../../src/runtime/Light.h"
-#include "../../../src/runtime/LightList.h"
-#include "../../../src/runtime/BgLight.h"
-#include "../../../src/runtime/State.h"
+#include "runtime/Behaviour.h"
+#include "runtime/EmitParams.h"
+#include "runtime/RuntimeLight.h"
+#include "runtime/Light.h"
+#include "runtime/LightList.h"
+#include "runtime/BgLight.h"
+#include "runtime/State.h"
 #include "topology.hpp"
 
 /**
@@ -19,7 +19,7 @@ namespace lightpath::integration {
 using EmitParam = ::EmitParam;
 using EmitParams = ::EmitParams;
 using Behaviour = ::Behaviour;
-using RuntimeLight = ::LPLight;
+using RuntimeLight = ::RuntimeLight;
 using Light = ::Light;
 using LightList = ::LightList;
 using BgLight = ::BgLight;

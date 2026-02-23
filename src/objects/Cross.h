@@ -2,8 +2,8 @@
 
 #include "../core/Types.h"
 #include "../core/Limits.h"
-#include "../LPRandom.h"
-#include "../topology/LPObject.h"
+#include "../Random.h"
+#include "../topology/TopologyObject.h"
 
 #define CROSS_PIXEL_COUNT 288  // 2 lines with 144 pixels each
 
@@ -16,11 +16,11 @@ enum CrossModel {
     C_LAST = C_DIAGONAL,
 };
 
-class Cross : public LPObject {
+class Cross : public TopologyObject {
 
   public:
   
-    Cross(uint16_t pixelCount) : LPObject(pixelCount) {
+    Cross(uint16_t pixelCount) : TopologyObject(pixelCount) {
         horizontalLineStart = 0;
         horizontalLineEnd = pixelCount / 2 - 1;
         verticalLineStart = pixelCount / 2;
@@ -34,12 +34,12 @@ class Cross : public LPObject {
     ~Cross() override = default;
     
     bool isMirrorSupported() override { return true; }
-    uint16_t* getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) override;
+    uint16_t* getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) override;
     float getProgressOnLine(uint16_t pixel, bool isVertical) const;
     uint16_t getPixelOnLine(float perc, bool isVertical) const;
     
     EmitParams getModelParams(int model) const override {
-        return EmitParams(model % (CrossModel::C_LAST + 1), LPRandom::randomSpeed());
+        return EmitParams(model % (CrossModel::C_LAST + 1), Random::randomSpeed());
     }
 
   private:

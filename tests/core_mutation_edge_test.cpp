@@ -4,7 +4,7 @@
 #include "../src/runtime/EmitParams.h"
 #include "../src/topology/Connection.h"
 #include "../src/topology/Intersection.h"
-#include "../src/topology/LPObject.h"
+#include "../src/topology/TopologyObject.h"
 #include "../src/topology/Model.h"
 
 namespace {
@@ -24,11 +24,11 @@ uint8_t countConnectedPorts(const Intersection& intersection) {
     return used;
 }
 
-class MinimalObject : public LPObject {
+class MinimalObject : public TopologyObject {
   public:
-    MinimalObject() : LPObject(16) { addModel(new Model(0, 10, GROUP1)); }
+    MinimalObject() : TopologyObject(16) { addModel(new Model(0, 10, GROUP1)); }
 
-    uint16_t* getMirroredPixels(uint16_t, LPOwner*, bool) override {
+    uint16_t* getMirroredPixels(uint16_t, Owner*, bool) override {
         mirrored_[0] = 0;
         return mirrored_;
     }

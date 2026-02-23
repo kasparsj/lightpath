@@ -121,7 +121,7 @@ target_link_libraries(your_target PRIVATE lightpath::integration)
 
 Namespace aliases:
 
-- `lightpath::integration::Object` (`LPObject`)
+- `lightpath::integration::Object` (`TopologyObject`)
 - `lightpath::integration::Intersection`
 - `lightpath::integration::Connection`
 - `lightpath::integration::Model`

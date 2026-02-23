@@ -2,17 +2,17 @@
 
 #include <cstdint>
 
-class LPObject;
+class TopologyObject;
 
 #define AVG_FPS_FRAMES 120
 
-class LPDebugger
+class Debugger
 {
 
   public:
 
-    LPDebugger(LPObject &object);
-    ~LPDebugger();
+    Debugger(TopologyObject &object);
+    ~Debugger();
     
     void update(unsigned long millis);
     void countEmit();
@@ -25,7 +25,7 @@ class LPDebugger
     void dumpIntersections();
 
   private:
-    LPObject &object;
+    TopologyObject &object;
     bool **weightPixels;
     bool *interPixels;
     bool *connPixels;

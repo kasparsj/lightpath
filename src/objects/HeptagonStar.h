@@ -2,8 +2,8 @@
 
 #include "../core/Types.h"
 #include "../core/Limits.h"
-#include "../LPRandom.h"
-#include "../topology/LPObject.h"
+#include "../Random.h"
+#include "../topology/TopologyObject.h"
 
 enum HeptagonStarModel {
     M_DEFAULT = 0,
@@ -17,17 +17,17 @@ enum HeptagonStarModel {
     M_LAST = M_SPLATTER,
 };
 
-class HeptagonStar : public LPObject {
+class HeptagonStar : public TopologyObject {
 
   public:
   
-    HeptagonStar(uint16_t pixelCount) : LPObject(pixelCount) {
+    HeptagonStar(uint16_t pixelCount) : TopologyObject(pixelCount) {
     }
     
     ~HeptagonStar() override = default;
     
     bool isMirrorSupported() override { return true; }
-    uint16_t* getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) override;
+    uint16_t* getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) override;
     uint8_t getStarSegmentIndex(uint16_t pixel) const;
     float getProgressOnStarSegment(uint8_t pathIndex, uint16_t pixel) const;
     uint16_t getPixelOnStarSegment(uint8_t pathIndex, float perc) const;
@@ -35,7 +35,7 @@ class HeptagonStar : public LPObject {
     
     EmitParams getModelParams(int model) const override {
         if (model <= HeptagonStarModel::M_LAST) {
-            return EmitParams(model, LPRandom::randomSpeed());
+            return EmitParams(model, Random::randomSpeed());
         }
         else { // key '8' and up
             EmitParams params(M_STAR);
@@ -46,9 +46,9 @@ class HeptagonStar : public LPObject {
     std::optional<EmitParams> getParams(char command) const override {
         switch (command) {
             case '+': {
-                EmitParams params(M_SPLATTER, LPRandom::randomSpeed());
+                EmitParams params(M_SPLATTER, Random::randomSpeed());
                 params.linked = false;
-                params.duration = max(1, (int) (LPRandom::MAX_SPEED/params.speed) + 1) * EmitParams::frameMs();
+                params.duration = max(1, (int) (Random::MAX_SPEED/params.speed) + 1) * EmitParams::frameMs();
                 return params;
             }
             case '*': {
@@ -74,7 +74,7 @@ class HeptagonStar : public LPObject {
                 return params;
             }
             default:
-                return LPObject::getParams(command);
+                return TopologyObject::getParams(command);
         }
     }
 

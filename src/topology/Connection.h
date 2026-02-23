@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
-#include "LPOwner.h"
+#include "Owner.h"
 #include "Port.h"
 
 class Intersection;
-class LPLight;
+class RuntimeLight;
 
-class Connection : public LPOwner {
+class Connection : public Owner {
 
   public:
     Intersection* from;
@@ -23,9 +23,9 @@ class Connection : public LPOwner {
     ~Connection() override;
     
     uint8_t getType() override { return TYPE_CONNECTION; };
-    void add(LPLight* const light) const;
-    void emit(LPLight* const light) const override;
-    void update(LPLight* const light) const override;
+    void add(RuntimeLight* const light) const;
+    void emit(RuntimeLight* const light) const override;
+    void update(RuntimeLight* const light) const override;
     uint16_t getPixel(uint16_t i) const {
       return fromPixel + (i * (pixelDir ? 1 : -1));
     }
@@ -33,7 +33,7 @@ class Connection : public LPOwner {
     uint16_t getToPixel() const;
     
   private:
-    void outgoing(LPLight* const light) const;
-    bool shouldExpire(const LPLight* const light) const;
-    bool render(LPLight* const light) const;
+    void outgoing(RuntimeLight* const light) const;
+    bool shouldExpire(const RuntimeLight* const light) const;
+    bool render(RuntimeLight* const light) const;
 };

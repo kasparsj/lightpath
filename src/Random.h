@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-class LPRandom
+class Random
 {
   public:
     static float randomSpeed();

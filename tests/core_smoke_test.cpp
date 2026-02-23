@@ -12,13 +12,13 @@
 
 namespace {
 
-class EmptyObject : public LPObject {
+class EmptyObject : public TopologyObject {
   public:
-    EmptyObject() : LPObject(8) {
+    EmptyObject() : TopologyObject(8) {
         addModel(new Model(0, 10, GROUP1));
     }
 
-    uint16_t* getMirroredPixels(uint16_t, LPOwner*, bool) override {
+    uint16_t* getMirroredPixels(uint16_t, Owner*, bool) override {
         mirroredPixels[0] = 0;
         return mirroredPixels;
     }

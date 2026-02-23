@@ -1,14 +1,14 @@
 #include <algorithm>
-#include "LPObject.h"
+#include "TopologyObject.h"
 #include "Port.h"
 
-LPObject* LPObject::instance = 0;
+TopologyObject* TopologyObject::instance = 0;
 
-LPObject::LPObject(uint16_t pixelCount) : pixelCount(pixelCount), realPixelCount(pixelCount) {
+TopologyObject::TopologyObject(uint16_t pixelCount) : pixelCount(pixelCount), realPixelCount(pixelCount) {
     instance = this;
 }
 
-LPObject::~LPObject() {
+TopologyObject::~TopologyObject() {
     // Keep public views stable while releasing ownership via smart pointers.
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
         conn[i].clear();
@@ -29,7 +29,7 @@ LPObject::~LPObject() {
 
 // Initialization methods removed - vectors handle dynamic sizing
 
-Model* LPObject::addModel(Model *model) {
+Model* TopologyObject::addModel(Model *model) {
     ownedModels_.emplace_back(model);
 
     // Ensure vector is large enough
@@ -40,7 +40,7 @@ Model* LPObject::addModel(Model *model) {
     return model;
 }
 
-Intersection* LPObject::addIntersection(Intersection *intersection) {
+Intersection* TopologyObject::addIntersection(Intersection *intersection) {
     ownedIntersections_.emplace_back(intersection);
 
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
@@ -52,7 +52,7 @@ Intersection* LPObject::addIntersection(Intersection *intersection) {
     return intersection;
 }
 
-Connection* LPObject::addConnection(Connection *connection) {
+Connection* TopologyObject::addConnection(Connection *connection) {
     ownedConnections_.emplace_back(connection);
 
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
@@ -64,7 +64,7 @@ Connection* LPObject::addConnection(Connection *connection) {
     return connection;
 }
 
-bool LPObject::removeConnection(uint8_t groupIndex, size_t index) {
+bool TopologyObject::removeConnection(uint8_t groupIndex, size_t index) {
     if (groupIndex >= MAX_GROUPS || index >= conn[groupIndex].size()) {
         return false;
     }
@@ -74,7 +74,7 @@ bool LPObject::removeConnection(uint8_t groupIndex, size_t index) {
     return true;
 }
 
-bool LPObject::removeConnection(Connection* connection) {
+bool TopologyObject::removeConnection(Connection* connection) {
     if (connection == nullptr) {
         return false;
     }
@@ -89,7 +89,7 @@ bool LPObject::removeConnection(Connection* connection) {
     return false;
 }
 
-void LPObject::releaseOwnership(Connection* connection) {
+void TopologyObject::releaseOwnership(Connection* connection) {
     auto it = std::find_if(
         ownedConnections_.begin(),
         ownedConnections_.end(),
@@ -100,7 +100,7 @@ void LPObject::releaseOwnership(Connection* connection) {
     }
 }
 
-void LPObject::addGap(uint16_t fromPixel, uint16_t toPixel) {
+void TopologyObject::addGap(uint16_t fromPixel, uint16_t toPixel) {
     gaps.push_back({fromPixel, toPixel});
     
     // Recalculate real pixel count
@@ -111,7 +111,7 @@ void LPObject::addGap(uint16_t fromPixel, uint16_t toPixel) {
     realPixelCount = pixelCount - gapPixels;
 }
 
-Connection* LPObject::addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t group, uint8_t numPorts) {
+Connection* TopologyObject::addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t group, uint8_t numPorts) {
     Intersection *from = new Intersection(numPorts, fromPixel, -1, group);
     Intersection *to = new Intersection(numPorts, toPixel, -1, group);
     addIntersection(from);
@@ -119,7 +119,7 @@ Connection* LPObject::addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t gr
     return addConnection(new Connection(from, to, group));
 }
 
-Intersection* LPObject::getIntersection(uint8_t i, uint8_t groups) {
+Intersection* TopologyObject::getIntersection(uint8_t i, uint8_t groups) {
     for (uint8_t j = 0; j < MAX_GROUPS; j++) {
         if (groups == 0 || (groups & groupMaskForIndex(j))) {
             if (i < inter[j].size()) {
@@ -131,7 +131,7 @@ Intersection* LPObject::getIntersection(uint8_t i, uint8_t groups) {
     return nullptr;
 }
 
-Connection* LPObject::getConnection(uint8_t i, uint8_t groups) {
+Connection* TopologyObject::getConnection(uint8_t i, uint8_t groups) {
     for (uint8_t j = 0; j < MAX_GROUPS; j++) {
         if (groups == 0 || (groups & groupMaskForIndex(j))) {
             if (i < conn[j].size()) {
@@ -145,7 +145,7 @@ Connection* LPObject::getConnection(uint8_t i, uint8_t groups) {
 
 // Gap initialization removed - vectors handle dynamic sizing
 
-bool LPObject::isPixelInGap(uint16_t logicalPixel) {
+bool TopologyObject::isPixelInGap(uint16_t logicalPixel) {
     for (const PixelGap& gap : gaps) {
         if (logicalPixel >= gap.fromPixel && logicalPixel <= gap.toPixel) {
             return true;
@@ -154,7 +154,7 @@ bool LPObject::isPixelInGap(uint16_t logicalPixel) {
     return false;
 }
 
-int16_t LPObject::translateToRealPixel(uint16_t logicalPixel) {
+int16_t TopologyObject::translateToRealPixel(uint16_t logicalPixel) {
     if (gaps.empty()) {
         return logicalPixel;
     }
@@ -172,7 +172,7 @@ int16_t LPObject::translateToRealPixel(uint16_t logicalPixel) {
     return realPixel;
 }
 
-uint16_t LPObject::translateToLogicalPixel(uint16_t realPixel) {
+uint16_t TopologyObject::translateToLogicalPixel(uint16_t realPixel) {
     if (gaps.empty()) {
         return realPixel;
     }

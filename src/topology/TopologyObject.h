@@ -14,10 +14,10 @@ struct PixelGap {
     uint16_t toPixel;
 };
 
-class LPObject {
+class TopologyObject {
 
   public:
-    static LPObject* instance;
+    static TopologyObject* instance;
     uint16_t pixelCount;
     uint16_t realPixelCount;
     std::vector<Intersection*> inter[MAX_GROUPS];
@@ -25,8 +25,8 @@ class LPObject {
     std::vector<Model*> models;
     std::vector<PixelGap> gaps;
 
-    LPObject(uint16_t pixelCount);
-    virtual ~LPObject();
+    TopologyObject(uint16_t pixelCount);
+    virtual ~TopologyObject();
 
     static constexpr uint8_t groupMaskForIndex(uint8_t index) {
         return static_cast<uint8_t>(1u << index);
@@ -64,7 +64,7 @@ class LPObject {
     }
     
     virtual bool isMirrorSupported() { return false; }
-    virtual uint16_t* getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) = 0;
+    virtual uint16_t* getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) = 0;
     
     int16_t translateToRealPixel(uint16_t logicalPixel);
     uint16_t translateToLogicalPixel(uint16_t realPixel);

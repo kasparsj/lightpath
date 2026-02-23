@@ -3,7 +3,7 @@
 #include "../core/Types.h"
 #include "EmitParams.h"
 
-class LPLight;
+class RuntimeLight;
 
 class Behaviour {
 
@@ -19,9 +19,9 @@ class Behaviour {
       colorChangeGroups = params.colorChangeGroups;
     }
 
-    uint16_t getBri(const LPLight *light) const;
-    float getPosition(LPLight* const light) const;
-    ColorRGB getColor(const LPLight *light, uint8_t group) const;
+    uint16_t getBri(const RuntimeLight *light) const;
+    float getPosition(RuntimeLight* const light) const;
+    ColorRGB getColor(const RuntimeLight *light, uint8_t group) const;
 
     bool renderSegment() const {
         return flags & B_RENDER_SEGMENT;

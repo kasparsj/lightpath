@@ -7,7 +7,7 @@
 
 uint8_t Intersection::nextId = 0;
 
-Intersection::Intersection(uint8_t numPorts, uint16_t topPixel, int16_t bottomPixel, uint8_t group) : LPOwner(group) {
+Intersection::Intersection(uint8_t numPorts, uint16_t topPixel, int16_t bottomPixel, uint8_t group) : Owner(group) {
   this->id = nextId++;
   this->numPorts = numPorts;
   this->topPixel = topPixel;
@@ -34,7 +34,7 @@ void Intersection::removePort(const Port* p) {
     }
 }
 
-void Intersection::emit(LPLight* const light) const {
+void Intersection::emit(RuntimeLight* const light) const {
     // go straight out of zeroConnection
     const Behaviour *behaviour = light->getBehaviour();
     if (numPorts == 2) {
@@ -49,7 +49,7 @@ void Intersection::emit(LPLight* const light) const {
     light->owner = this;
 }
 
-void Intersection::update(LPLight* const light) const {
+void Intersection::update(RuntimeLight* const light) const {
     if (!light->isExpired) {
         light->resetPixels();
         if (light->shouldExpire()) {
@@ -78,9 +78,9 @@ void Intersection::update(LPLight* const light) const {
   }
 }
 
-Port* Intersection::getPrevOutPort(const LPLight* const light) const {
+Port* Intersection::getPrevOutPort(const RuntimeLight* const light) const {
     Port* port = NULL;
-    const LPLight* linkedPrev = light->getPrev();
+    const RuntimeLight* linkedPrev = light->getPrev();
     if (linkedPrev != NULL) {
         port = linkedPrev->getOutPort(id);
     }
@@ -119,7 +119,7 @@ Port* Intersection::randomPort(const Port* const incoming, const Behaviour* cons
   return candidates[(uint8_t) LP_RANDOM(candidates.size())];
 }
 
-Port* Intersection::choosePort(const Model* const model, const LPLight* const light) const {
+Port* Intersection::choosePort(const Model* const model, const RuntimeLight* const light) const {
     Port *incoming = light->inPort;
     uint16_t sum = sumW(model, incoming);
     if (sum == 0) {

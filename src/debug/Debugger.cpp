@@ -1,9 +1,9 @@
-#include "LPDebugger.h"
+#include "Debugger.h"
 
 #include "../core/Platform.h"
-#include "../topology/LPObject.h"
+#include "../topology/TopologyObject.h"
 
-LPDebugger::LPDebugger(LPObject &object) : object(object) {
+Debugger::Debugger(TopologyObject &object) : object(object) {
     interPixels = new bool[object.pixelCount]{false};
     connPixels = new bool[object.pixelCount]{false};
     Port* ports[255] = {};
@@ -47,7 +47,7 @@ LPDebugger::LPDebugger(LPObject &object) : object(object) {
     }
 }
 
-LPDebugger::~LPDebugger() {
+Debugger::~Debugger() {
     delete[] interPixels;
     delete[] connPixels;
     for (uint8_t i=0; i<object.models.size(); i++) {
@@ -57,7 +57,7 @@ LPDebugger::~LPDebugger() {
     delete[] weightPixels;
 }
 
-void LPDebugger::update(unsigned long millis) {
+void Debugger::update(unsigned long millis) {
     fps[fpsIndex] = 1000.f / float(millis - prevMillis);
     fpsIndex = (fpsIndex + 1) % AVG_FPS_FRAMES;
     emitsIndex = (emitsIndex + 1) % AVG_FPS_FRAMES;
@@ -65,11 +65,11 @@ void LPDebugger::update(unsigned long millis) {
     prevMillis = millis;
 }
 
-void LPDebugger::countEmit() {
+void Debugger::countEmit() {
     numEmits[emitsIndex]++;
 }
 
-float LPDebugger::getFPS() {
+float Debugger::getFPS() {
     float avg = 0;
     for (uint8_t i=0; i<AVG_FPS_FRAMES; i++) {
         avg += fps[i];
@@ -77,7 +77,7 @@ float LPDebugger::getFPS() {
     return avg / AVG_FPS_FRAMES;
 }
 
-float LPDebugger::getNumEmits() {
+float Debugger::getNumEmits() {
     float sum = 0;
     for (uint8_t i=0; i<AVG_FPS_FRAMES; i++) {
         sum += numEmits[i];
@@ -85,19 +85,19 @@ float LPDebugger::getNumEmits() {
     return sum / AVG_FPS_FRAMES;
 }
 
-bool LPDebugger::isModelWeight(uint8_t id, uint16_t i) {
+bool Debugger::isModelWeight(uint8_t id, uint16_t i) {
   return weightPixels[id][i];
 }
 
-bool LPDebugger::isIntersection(uint16_t i) {
+bool Debugger::isIntersection(uint16_t i) {
   return interPixels[i];
 }
 
-bool LPDebugger::isConnection(uint16_t i) {
+bool Debugger::isConnection(uint16_t i) {
   return connPixels[i];
 }
 
-void LPDebugger::dumpConnections() {
+void Debugger::dumpConnections() {
   LP_LOGLN("--- CONNECTIONS ---");
   for (uint8_t i=0; i<MAX_GROUPS; i++) {
       for (uint8_t j=0; j<object.conn[i].size(); j++) {
@@ -106,7 +106,7 @@ void LPDebugger::dumpConnections() {
   }
 }
 
-void LPDebugger::dumpIntersections() {
+void Debugger::dumpIntersections() {
   LP_LOGLN("--- INTERSECTIONS ---");
   for (uint8_t i=0; i<MAX_GROUPS; i++) {
       for (uint8_t j=0; j<object.inter[i].size(); j++) {

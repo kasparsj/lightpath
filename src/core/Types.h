@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdint>
 
-#include "../LPRandom.h"
+#include "../Random.h"
 
 struct ColorRGB {
     uint8_t R;
@@ -44,7 +44,7 @@ struct ColorRGB {
     }
 
     void setRandom() {
-        fromHSV(LPRandom::randomHue(), LPRandom::randomSaturation(), LPRandom::randomValue());
+        fromHSV(Random::randomHue(), Random::randomSaturation(), Random::randomValue());
     }
 
     void fromHSV(uint8_t h, uint8_t s, uint8_t v) {

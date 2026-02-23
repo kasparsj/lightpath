@@ -7,10 +7,10 @@
 class LightList;
 class Model;
 class Behaviour;
-class LPOwner;
+class Owner;
 class Port;
 
-class LPLight
+class RuntimeLight
 {
 
   public:
@@ -27,13 +27,13 @@ class LPLight
     float position;
     uint16_t bri = 255;
     uint8_t brightness = 0;
-    const LPOwner *owner = 0;
-    uint32_t lifeMillis = 0; // for LPLight this is offsetMillis
+    const Owner *owner = 0;
+    uint32_t lifeMillis = 0; // for RuntimeLight this is offsetMillis
 
-    LPLight(LightList* const list, uint16_t idx = 0, uint8_t maxBri = 255) : idx(idx), maxBri(maxBri), list(list) {
+    RuntimeLight(LightList* const list, uint16_t idx = 0, uint8_t maxBri = 255) : idx(idx), maxBri(maxBri), list(list) {
         position = -1;
     }
-    virtual ~LPLight() = default;
+    virtual ~RuntimeLight() = default;
 
     void setInPort(Port* const port) {
       inPort = port;
@@ -45,8 +45,8 @@ class LPLight
     virtual void nextFrame();
     virtual bool shouldExpire() const;
 
-    LPLight* getPrev() const;
-    LPLight* getNext() const;
+    RuntimeLight* getPrev() const;
+    RuntimeLight* getNext() const;
     virtual const Model* getModel() const;
     virtual const Behaviour* getBehaviour() const;
     virtual float getSpeed() const;

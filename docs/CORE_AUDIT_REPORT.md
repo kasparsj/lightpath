@@ -10,7 +10,7 @@ Canonical location: `lightpath/docs/CORE_AUDIT_REPORT.md` in the Lightpath repos
 ### What the core appears to do
 
 - Implements a graph-based light propagation engine over `Intersection` and `Connection` topology objects, with per-path weighted routing via `Model`/`Weight`.
-- Maintains runtime animation layers (`LightList`) that emit and update light particles (`LPLight`/`Light`) every frame.
+- Maintains runtime animation layers (`LightList`) that emit and update light particles (`RuntimeLight`/`Light`) every frame.
 - Applies color/palette interpolation (including `ofxColorTheory` color rules) and per-layer blend modes into shared pixel accumulators in `State`.
 - Supports behavior flags for movement/brightness/mirroring/segment rendering (`BehaviourFlags` in `Config.h`) that alter propagation and rendering semantics.
 - Is reused in two surfaces: desktop simulator (openFrameworks + OSC input) and ESP firmware (Arduino + OSC/HTTP control), with firmware compiling core through a symlink (`firmware/esp/src -> ../../packages/lightpath/src`).
@@ -30,7 +30,7 @@ Canonical location: `lightpath/docs/CORE_AUDIT_REPORT.md` in the Lightpath repos
 
 - Add a standalone core build target (host static lib + minimal test harness) to decouple from simulator/firmware scaffolding.
 - Fix correctness bugs in `LightList`/`State`/object model selection and add guardrails for null/div-by-zero paths.
-- Replace fixed pixel buffer assumptions in `LPLight` segment/link rendering with bounded storage (or explicit clipping).
+- Replace fixed pixel buffer assumptions in `RuntimeLight` segment/link rendering with bounded storage (or explicit clipping).
 - Add baseline tests for topology routing, emit/update lifecycle, and palette interpolation behavior.
 - Publish core architecture + integration contract docs (engine loop, ownership, protocol mapping from OSC/HTTP to `EmitParams`).
 
@@ -43,8 +43,8 @@ Canonical location: `lightpath/docs/CORE_AUDIT_REPORT.md` in the Lightpath repos
 - Notable files:
 - `State.*`: frame update, emission, blending, layer lifecycle.
 - `LightList.*`: layer config, light allocation, emitting, per-list state.
-- `LPLight.*` and `Light.*`: particle data and per-frame updates.
-- `LPObject.*`, `Intersection.*`, `Connection.*`, `Port.*`, `Model.*`, `Weight.*`: graph topology and weighted traversal.
+- `RuntimeLight.*` and `Light.*`: particle data and per-frame updates.
+- `TopologyObject.*`, `Intersection.*`, `Connection.*`, `Port.*`, `Model.*`, `Weight.*`: graph topology and weighted traversal.
 - `EmitParams.*`, `Behaviour.*`, `Config.h`: parameter schema and behavior flags.
 - `Palette.*`, `Palettes.*`: palette generation/interpolation and preset palettes.
 - `objects/*`: concrete topologies (`Heptagon919`, `Heptagon3024`, `Line`, `Cross`, `Triangle`).
@@ -57,8 +57,8 @@ Canonical location: `lightpath/docs/CORE_AUDIT_REPORT.md` in the Lightpath repos
 
 - `State` (`packages/lightpath/src/runtime/State.h`): owns active `LightList`s and pixel accumulators; orchestrates `autoEmit`, `emit`, `update`, and final pixel sampling.
 - `LightList` (`packages/lightpath/src/runtime/LightList.h`): per-layer configuration/state (speed, easing, fade, palette, behavior, blend mode), light allocation/reset/update.
-- `LPLight`/`Light` (`packages/lightpath/src/runtime/LPLight.h`, `packages/lightpath/src/runtime/Light.h`): per-light progression on topology and color/brightness computation.
-- `LPObject` (`packages/lightpath/src/topology/LPObject.h`): topology container for intersections/connections/models and command presets.
+- `RuntimeLight`/`Light` (`packages/lightpath/src/runtime/RuntimeLight.h`, `packages/lightpath/src/runtime/Light.h`): per-light progression on topology and color/brightness computation.
+- `TopologyObject` (`packages/lightpath/src/topology/TopologyObject.h`): topology container for intersections/connections/models and command presets.
 - `Intersection`/`Connection`/`Port`: route lights across graph edges and optionally out to external sinks.
 - `Model`/`Weight`: weighted routing table per model.
 - `Palette`/`Palettes`: color handling, interpolation and presets, optional color-rule generation through `ofxColorTheory`.
@@ -78,7 +78,7 @@ Core Engine (per frame)
   -> State::emit() -> get/create LightList -> choose emitter (intersection/connection)
   -> State::update()
      -> each LightList::update()
-     -> each LPLight owner update (Intersection/Connection traversal)
+     -> each RuntimeLight owner update (Intersection/Connection traversal)
      -> brightness/color resolution + blend into pixel accumulators
 
 Outputs
@@ -151,7 +151,7 @@ Outputs
 - Firmware-core path depends on symlink (`firmware/esp/src`) which can be problematic on environments that do not preserve symlinks.
 - Debug visibility:
 - `LP_LOG*` macros route to `Serial` (Arduino) or `ofLog` (OF).
-- `LPDebugger` can visualize intersections/connections/model weights in simulator and firmware (when enabled).
+- `Debugger` can visualize intersections/connections/model weights in simulator and firmware (when enabled).
 
 ## 4) Architecture & Implementation Analysis
 
@@ -173,7 +173,7 @@ Outputs
 ### State management model
 
 - Centralized mutable state object (`State`) with global statics (`gMillis`, `gPerlinNoise`).
-- Layer-centric model (`LightList`) plus topology model (`LPObject` + graph components).
+- Layer-centric model (`LightList`) plus topology model (`TopologyObject` + graph components).
 - No ECS/scene-graph abstraction; direct object graph with pointer ownership.
 
 ### Concurrency model
@@ -273,7 +273,7 @@ Resolved in Phase 1:
 - Missing return in `LightList::addLightFromMsg`.
 - Wrong assignment in `LightList::setDuration`.
 - `LightList::doEmit` `uint8_t` truncation risk on larger lists.
-- Segment/link pixel packing overflow risk in `LPLight`.
+- Segment/link pixel packing overflow risk in `RuntimeLight`.
 - Null dereference path in `Intersection::update`.
 - Divide/modulo-by-zero risk in `State::getEmitter`.
 - Recursive const `HashMap::operator[]`.
@@ -369,7 +369,7 @@ Dependencies: 0.1.
 
 ### Task 1.2
 Goal: enforce safe bounds for pixel packing paths.
-Files/modules: `LPLight.h`, `LPLight.cpp`, `Config.h`.
+Files/modules: `RuntimeLight.h`, `RuntimeLight.cpp`, `Config.h`.
 Acceptance criteria: no out-of-bounds writes in segment/link mode for worst-case connections; behavior defined when over limit.
 Complexity: M.
 Dependencies: 1.1.
@@ -393,7 +393,7 @@ Status: completed in this phase (`packages/lightpath/CMakeLists.txt` + `packages
 
 ### Task 2.2
 Goal: add regression tests for routing and lifecycle.
-Files/modules: test sources around `State`, `LPObject`, `LightList`, `Palette`.
+Files/modules: test sources around `State`, `TopologyObject`, `LightList`, `Palette`.
 Acceptance criteria: tests cover emit/update expiry, model routing, palette interpolation, and edge cases (empty emit groups).
 Complexity: M.
 Dependencies: 2.1.
@@ -457,7 +457,7 @@ Dependencies: 3.1.
 - Prevented `Behaviour` leak on early max-light rejection in `State::setupListFrom`.
 - Added zero-candidate guards in `State::getEmitter` to avoid modulo/division by zero.
 - Fixed null-dereference path in `Intersection::update` when no port is chosen.
-- Added bounds clipping in `LPLight` segment/link pixel packing to prevent writes past `pixels`.
+- Added bounds clipping in `RuntimeLight` segment/link pixel packing to prevent writes past `pixels`.
 - Fixed off-by-one model modulo in `Line`, `Cross`, `Triangle` `getModelParams`.
 - Fixed recursive const access bug in `HashMap::operator[]` and made lookup helpers const.
 
@@ -493,11 +493,11 @@ Validation after Phase 1:
 - Added strict warning toggle in host build:
 - `LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS` in `packages/lightpath/CMakeLists.txt`
 - Warning cleanup and annotation improvements:
-- `LPLight` and `LightList` now have virtual destructors, `LPLight` ctor init order was fixed, object overrides were annotated, and warning-only footguns were cleaned up in `LPObject`/`LightList`.
+- `RuntimeLight` and `LightList` now have virtual destructors, `RuntimeLight` ctor init order was fixed, object overrides were annotated, and warning-only footguns were cleaned up in `TopologyObject`/`LightList`.
 - Improved teardown cleanup in core:
 - `State` now deletes owned `LightList` instances on destruction.
 - `Model` now deletes owned `Weight` instances on destruction.
-- `Connection` now deletes owned `Port` instances, and `LPObject` now destroys connections before intersections to keep port cleanup order safe.
+- `Connection` now deletes owned `Port` instances, and `TopologyObject` now destroys connections before intersections to keep port cleanup order safe.
 - Added long-run lifecycle regression coverage:
 - `packages/lightpath/tests/core_regression_test.cpp` now verifies bounded repeated emit/update/stop cycles and post-`stopAll` drain behavior over a full `Line` traversal window, including background-slot (`lightLists[0]`) and `totalLightLists` invariants.
 - Added teardown regression check:
@@ -528,7 +528,7 @@ Keyword scans performed across `packages/lightpath` and `apps/simulator`:
 
 - Networking terms (`udp|osc|websocket|http|mdns|ssdp|espnow|tcp`): simulator OSC usage and core `ExternalPort` callback hook were found; no core-native socket stack.
 - Parameter/config terms (`param|settings|json|palette|EmitParam|behaviourFlags`): `EmitParams`, palette system, behavior flags, and simulator parser paths confirmed.
-- Timing terms (`frame|millis|fps|update`): frame-based timing found in `State`, `LightList`, `LPDebugger`, simulator `ofApp`.
+- Timing terms (`frame|millis|fps|update`): frame-based timing found in `State`, `LightList`, `Debugger`, simulator `ofApp`.
 - Framework/addon terms (`ofx|openFrameworks|glm|ofMain|Arduino`): dual-target abstraction in `Config.h`, OF integration in simulator, direct `ofxColorTheory` integration in core.
 
 ## Appendix B: Known TODO/FIXME markers

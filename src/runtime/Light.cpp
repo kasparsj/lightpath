@@ -3,7 +3,7 @@
 #include "LightList.h"
 #include "../Globals.h"
 
-Light::Light(LightList *list, float speed, uint32_t lifeMillis, uint16_t idx, uint8_t maxBri) : LPLight(list, idx, maxBri) {
+Light::Light(LightList *list, float speed, uint32_t lifeMillis, uint16_t idx, uint8_t maxBri) : RuntimeLight(list, idx, maxBri) {
     this->speed = speed;
     this->lifeMillis = lifeMillis;
     this->color = ColorRGB(255, 255, 255);

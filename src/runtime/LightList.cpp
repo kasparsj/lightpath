@@ -20,7 +20,7 @@ void LightList::init(uint16_t numLights) {
     this->numLights = numLights;
     allocatedLights = numLights;
     numEmitted = 0;
-    lights = new LPLight*[numLights]();
+    lights = new RuntimeLight*[numLights]();
 }
 
 void LightList::setup(uint16_t numLights, uint8_t maxBri) {
@@ -43,27 +43,27 @@ float LightList::getBriMult(uint16_t i) {
     return mult;
 }
 
-LPLight* LightList::createLight(uint16_t i, uint8_t brightness) {
+RuntimeLight* LightList::createLight(uint16_t i, uint8_t brightness) {
     float mult = getBriMult(i);
-    LPLight *light;
+    RuntimeLight *light;
     // todo: fix if statement
     if (behaviour != NULL/* && behaviour->colorChangeGroups > 0*/) {
         light = new Light(this, speed, lifeMillis, linked ? i : 0, brightness * mult);
     }
     else {
-        light = new LPLight(this, linked ? i : 0, brightness * mult);
+        light = new RuntimeLight(this, linked ? i : 0, brightness * mult);
     }
     (*this)[i] = light;
     return light;
 }
 
-LPLight* LightList::addLightFromMsg(const LightMessage* lightMsg) {
-    LPLight* light;
+RuntimeLight* LightList::addLightFromMsg(const LightMessage* lightMsg) {
+    RuntimeLight* light;
     if (behaviour != NULL) {
         light = new Light(this, lightMsg->speed, lightMsg->life, lightMsg->lightIdx, lightMsg->brightness);
     }
     else {
-        light = new LPLight(this, lightMsg->lightIdx, lightMsg->brightness);
+        light = new RuntimeLight(this, lightMsg->lightIdx, lightMsg->brightness);
     }
     return light;
 }
@@ -124,7 +124,7 @@ void LightList::setupFrom(const EmitParams &params) {
 
 void LightList::initEmit(uint8_t posOffset) {
     for (uint16_t i=0; i<numLights; i++) {
-        LPLight *light = (*this)[i];
+        RuntimeLight *light = (*this)[i];
         initPosition(i, light);
         light->position += posOffset;
         initBri(i, light);
@@ -132,14 +132,14 @@ void LightList::initEmit(uint8_t posOffset) {
     }
 }
 
-float LightList::getPosition(LPLight* const light) const {
+float LightList::getPosition(RuntimeLight* const light) const {
   if (behaviour != NULL) {
     return behaviour->getPosition(light);
   }
   return light->position + light->getSpeed();
 }
 
-void LightList::initPosition(uint16_t i, LPLight* const light) const {
+void LightList::initPosition(uint16_t i, RuntimeLight* const light) const {
   float position = (speed != 0 ? i * -1.f : numLights - 1 - i * 1.f);
   if (order == LIST_ORDER_RANDOM) {
     position = LP_RANDOM(model->getMaxLength());
@@ -147,7 +147,7 @@ void LightList::initPosition(uint16_t i, LPLight* const light) const {
   light->position = position;
 }
 
-void LightList::initBri(uint16_t i, LPLight* const light) const {
+void LightList::initBri(uint16_t i, RuntimeLight* const light) const {
   switch (order) {
     case LIST_ORDER_RANDOM:
       if (fadeThresh > 0) {
@@ -162,14 +162,14 @@ void LightList::initBri(uint16_t i, LPLight* const light) const {
   }
 }
 
-uint16_t LightList::getBri(const LPLight* light) const {
+uint16_t LightList::getBri(const RuntimeLight* light) const {
   if (behaviour != NULL) {
     return behaviour->getBri(light);
   }
   return light->bri + fadeSpeed;
 }
 
-void LightList::initLife(uint16_t i, LPLight* const light) const {
+void LightList::initLife(uint16_t i, RuntimeLight* const light) const {
   uint32_t lifeMillis = light->lifeMillis;
   if (order == LIST_ORDER_SEQUENTIAL && light->getSpeed() > 0) {
     lifeMillis += ceil(1.f / light->getSpeed() * i) * EmitParams::frameMs();
@@ -181,10 +181,10 @@ bool LightList::update() {
     doEmit();
     bool allExpired = true;
     for (uint16_t j=0; j<numLights; j++) {
-        LPLight* const light = lights[j];
+        RuntimeLight* const light = lights[j];
         if (light == NULL) continue;
         if (light->isExpired) {
-          LPLight* const next = light->getNext();
+          RuntimeLight* const next = light->getNext();
           if (next != NULL) {
             next->idx = 0;
           }
@@ -207,7 +207,7 @@ void LightList::doEmit() {
         const uint16_t batchSize = numLights - numEmitted;
         const uint16_t j = numEmitted;
         for (uint16_t i=0; i<batchSize; i++) {
-            LPLight* const light = (*this)[i+j];
+            RuntimeLight* const light = (*this)[i+j];
             if (light->position < 0) {
                 break;
             }

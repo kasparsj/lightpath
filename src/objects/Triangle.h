@@ -2,8 +2,8 @@
 
 #include "../core/Types.h"
 #include "../core/Limits.h"
-#include "../LPRandom.h"
-#include "../topology/LPObject.h"
+#include "../Random.h"
+#include "../topology/TopologyObject.h"
 
 #define TRIANGLE_PIXEL_COUNT 900
 
@@ -15,11 +15,11 @@ enum TriangleModel {
     T_LAST = T_COUNTER_CLOCKWISE,
 };
 
-class Triangle : public LPObject {
+class Triangle : public TopologyObject {
 
   public:
   
-    Triangle(uint16_t pixelCount) : LPObject(pixelCount) {
+    Triangle(uint16_t pixelCount) : TopologyObject(pixelCount) {
         // Define segment boundaries
         segmentSize = pixelCount / 3;
         subSegmentSize = segmentSize / 5;  // Each side has 5 equal sub-segments
@@ -37,7 +37,7 @@ class Triangle : public LPObject {
     ~Triangle() override = default;
     
     bool isMirrorSupported() override { return true; }
-    uint16_t* getMirroredPixels(uint16_t pixel, LPOwner* mirrorFlipEmitter, bool mirrorRotate) override;
+    uint16_t* getMirroredPixels(uint16_t pixel, Owner* mirrorFlipEmitter, bool mirrorRotate) override;
     
     // Methods for mapping between pixels and segment progress
     float getProgressOnSegment(uint16_t pixel, uint8_t segment) const;
@@ -45,7 +45,7 @@ class Triangle : public LPObject {
     uint8_t getSegmentForPixel(uint16_t pixel) const;
     
     EmitParams getModelParams(int model) const override {
-        return EmitParams(model % (TriangleModel::T_LAST + 1), LPRandom::randomSpeed());
+        return EmitParams(model % (TriangleModel::T_LAST + 1), Random::randomSpeed());
     }
 
   private:
