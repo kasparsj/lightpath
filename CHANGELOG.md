@@ -14,6 +14,8 @@
 - Moved source-integration aliases into `lightpath::integration::*` namespace.
 - Narrowed `lightpath/lightpath.hpp` to stable installable API headers only (`engine.hpp`, `types.hpp`, `status.hpp`).
 - Added typed status/result error model (`ErrorCode`, `Status`, `Result<T>`).
+- Added explicit source-integration CMake target (`lightpath::integration`) for
+  non-installable `lightpath/integration*.hpp` usage.
 
 ### Refactor
 
@@ -22,6 +24,8 @@
 - Hardened runtime pixel access against out-of-range reads/writes in `State`.
 - Fixed `LightList` reallocation teardown to delete using allocated size.
 - Fixed undefined behavior in `Connection::render` index conversion/clamping.
+- Replaced recursive source globs with explicit CMake source lists.
+- Split third-party color-theory compilation into a dedicated internal target.
 
 ### Build
 
@@ -41,3 +45,5 @@
 - Reworked `README.md` to document stable-vs-source-integration header tiers.
 - Rewrote `docs/API.md` for the current public surface.
 - Updated `MIGRATION.md` with breaking changes and parent migration notes.
+- Added thread-safety, determinism, and complexity guarantees to API docs.
+- Added a host-loop integration example with multi-object + custom palette strategy.

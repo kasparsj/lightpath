@@ -76,3 +76,5 @@ Updated in the same change set:
 - Existing source-integration aliases now live under `lightpath::integration::*`.
 - `lightpath::Engine` (typed facade) remains the recommended entry point for new host integrations.
 - Install/export package consumers should prefer the stable umbrella (`lightpath/lightpath.hpp`).
+- CMake source-tree integrations should link `lightpath::integration` when using
+  `lightpath/integration*.hpp` headers.

@@ -11,5 +11,6 @@
  *
  * For source-level topology/runtime integration, include module headers directly
  * (for example `lightpath/integration/runtime.hpp`,
- * `lightpath/integration/topology.hpp`).
+ * `lightpath/integration/topology.hpp`) and link `lightpath::integration`
+ * in source-tree CMake builds.
  */

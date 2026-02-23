@@ -22,6 +22,7 @@ files=(
   "$ROOT_DIR/include/lightpath/integration/topology.hpp"
   "$ROOT_DIR/src/api/Engine.cpp"
   "$ROOT_DIR/examples/minimal_usage.cpp"
+  "$ROOT_DIR/examples/integration_host_loop.cpp"
   "$ROOT_DIR/tests/public_api_test.cpp"
   "$ROOT_DIR/tests/api_fuzz_test.cpp"
   "$ROOT_DIR/tests/core_mutation_edge_test.cpp"

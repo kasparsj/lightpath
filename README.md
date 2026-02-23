@@ -23,6 +23,8 @@ Lightpath provides two header tiers:
   - `lightpath/integration/debug.hpp`
 
 The stable install/export package installs only the stable API headers.
+Source-integration headers are build-tree only and are intentionally exposed
+through a separate CMake target: `lightpath::integration`.
 
 ## Build and Test
 
@@ -96,6 +98,7 @@ int main() {
 ```
 
 A compiling example is provided in `examples/minimal_usage.cpp`.
+For source-level topology/runtime integration, see `examples/integration_host_loop.cpp`.
 
 ## CMake Integration
 
@@ -105,6 +108,16 @@ A compiling example is provided in `examples/minimal_usage.cpp`.
 add_subdirectory(external/lightpath)
 target_link_libraries(your_target PRIVATE lightpath::lightpath)
 ```
+
+### `add_subdirectory` (source integration layer)
+
+```cmake
+add_subdirectory(external/lightpath)
+target_link_libraries(your_target PRIVATE lightpath::integration)
+```
+
+Use `lightpath::integration` only for source-tree integrations that need
+topology/runtime internals (`lightpath/integration*.hpp`).
 
 ### Install + `find_package`
 

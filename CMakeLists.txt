@@ -256,6 +256,15 @@ if(LIGHTPATH_CORE_BUILD_EXAMPLES)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_minimal_example PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
+
+  add_executable(
+    lightpath_core_integration_example
+    examples/integration_host_loop.cpp
+  )
+  target_link_libraries(lightpath_core_integration_example PRIVATE lightpath::integration)
+  if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
+    target_compile_options(lightpath_core_integration_example PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+  endif()
 endif()
 
 if(LIGHTPATH_CORE_BUILD_BENCHMARKS)
@@ -285,6 +294,10 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
 
   if(TARGET lightpath_core_minimal_example)
     add_test(NAME lightpath_core_example COMMAND lightpath_core_minimal_example)
+  endif()
+
+  if(TARGET lightpath_core_integration_example)
+    add_test(NAME lightpath_core_integration_example COMMAND lightpath_core_integration_example)
   endif()
 
   add_executable(

@@ -76,7 +76,31 @@ Thread-safe runtime facade:
 - `uint16_t pixelCount() const`
 - `Result<Color> pixel(uint16_t index, uint8_t max_brightness = 255) const`
 
-## 3) Source-Integration Module Headers
+## 3) Operational Guarantees
+
+### Thread-safety
+
+- `lightpath::Engine` is safe for concurrent calls on the same instance.
+- No additional external locking is required for `emit/update/tick/pixel/...` on one instance.
+- Source-integration types (`lightpath::integration::*`) are not thread-safe by default.
+
+### Determinism
+
+- With fixed inputs, deterministic command ordering, and a fixed `std::rand` seed
+  (`std::srand(...)`), `lightpath::Engine` emits deterministic output.
+- Any call path that uses random defaults (for example omitted color/length in low-level
+  integrations) inherits `std::rand` global-state behavior.
+
+### Complexity (per call, approximate)
+
+- `Engine::pixelCount()`: `O(1)`
+- `Engine::pixel(index)`: `O(1)`
+- `Engine::emit(...)`: `O(MAX_LIGHT_LISTS + G)` where `G` is grouped emitter lookup work.
+- `Engine::update(...)` / `Engine::tick(...)`: `O(P + L)` where `P` is pixel count and
+  `L` is active runtime light count.
+- `Engine::stopAll()`: `O(MAX_LIGHT_LISTS)`
+
+## 4) Source-Integration Module Headers
 
 These headers expose broader topology/runtime/rendering integration types used by MeshLED.
 They are source-level integration headers and are not part of the installable stable package contract.
@@ -85,6 +109,12 @@ Primary integration umbrella:
 
 ```cpp
 #include <lightpath/integration.hpp>
+```
+
+For CMake source-tree consumers, link the dedicated target:
+
+```cmake
+target_link_libraries(your_target PRIVATE lightpath::integration)
 ```
 
 ### `lightpath/integration/topology.hpp`
@@ -141,14 +171,14 @@ Namespace aliases/constants:
 
 - `lightpath::integration::Debugger`
 
-## 4) Invariants
+## 5) Invariants
 
 - Stable engine API never returns raw owning pointers.
 - `Engine::pixel(...)` returns `ErrorCode::OutOfRange` for invalid indices.
 - `EmitCommand::max_brightness` must be `>= min_brightness` (`InvalidArgument` otherwise).
 - Runtime update and output access in `Engine` are mutex-protected.
 
-## 5) Internal Layout (Non-API)
+## 6) Internal Layout (Non-API)
 
 - `src/topology`
 - `src/runtime`
