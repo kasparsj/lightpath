@@ -5,20 +5,22 @@ It builds topology, runs animation/runtime state, and produces per-pixel RGB out
 
 ## API Layout
 
-Lightpath ships one public header surface under `include/lightpath/`:
+Lightpath provides two header tiers:
 
-- High-level engine facade:
+- Stable installable API:
   - `lightpath/lightpath.hpp`
   - `lightpath/engine.hpp`
   - `lightpath/types.hpp`
   - `lightpath/status.hpp`
-- Module headers for topology/runtime/rendering/object/debug integration:
+- Source-integration module headers (for in-repo integrations like MeshLED):
   - `lightpath/topology.hpp`
   - `lightpath/runtime.hpp`
   - `lightpath/rendering.hpp`
   - `lightpath/objects.hpp`
   - `lightpath/factory.hpp`
   - `lightpath/debug.hpp`
+
+The stable install/export package installs only the stable API headers.
 
 ## Build and Test
 
@@ -118,7 +120,7 @@ target_link_libraries(your_target PRIVATE lightpath::lightpath)
 
 ## Source Layout
 
-- `include/lightpath/` public API (facade + module headers)
+- `include/lightpath/` stable facade + source-integration module headers
 - `src/topology/` graph objects and routing
 - `src/runtime/` state update and animation
 - `src/rendering/` palette/blend implementation

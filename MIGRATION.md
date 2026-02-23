@@ -21,7 +21,7 @@ Former compatibility headers were promoted to top-level public headers.
 
 ## New Public Header Layout
 
-Top-level module headers are now part of the primary API surface:
+Top-level module headers are now the source-integration surface:
 
 - `lightpath/topology.hpp`
 - `lightpath/runtime.hpp`
@@ -30,7 +30,7 @@ Top-level module headers are now part of the primary API surface:
 - `lightpath/factory.hpp`
 - `lightpath/debug.hpp`
 
-High-level typed facade remains available:
+High-level typed stable facade:
 
 - `lightpath/engine.hpp`
 - `lightpath/types.hpp`
@@ -50,7 +50,7 @@ High-level typed facade remains available:
 #include <lightpath/lightpath.hpp>
 ```
 
-Or include modules directly as needed:
+If you previously depended on legacy topology/runtime internals, include modules directly:
 
 ```cpp
 #include <lightpath/runtime.hpp>
@@ -62,9 +62,9 @@ Or include modules directly as needed:
 Updated in the same change set:
 
 1. `/Users/kasparsj/Work2/meshled/apps/simulator/src/ofApp.h`
-   - `lightpath/legacy.hpp` -> `lightpath/lightpath.hpp`
+   - `lightpath/legacy.hpp` -> explicit module headers (`debug.hpp`, `objects.hpp`, `runtime.hpp`)
 2. `/Users/kasparsj/Work2/meshled/firmware/esp/LightPath.h`
-   - `lightpath/legacy.hpp` -> `lightpath/lightpath.hpp`
+   - `lightpath/legacy.hpp` -> explicit module headers (`objects.hpp`, `rendering.hpp`, `runtime.hpp`)
 3. `/Users/kasparsj/Work2/meshled/firmware/esp/WebServerLayers.h`
    - `lightpath/legacy/rendering.hpp` -> `lightpath/rendering.hpp`
 4. `/Users/kasparsj/Work2/meshled/firmware/esp/homo_deus.ino`
@@ -72,5 +72,6 @@ Updated in the same change set:
 
 ## Notes
 
-- Existing namespaced aliases used by MeshLED integrations (`lightpath::Object`, `lightpath::RuntimeState`, `lightpath::EmitParams`, etc.) remain available via promoted module headers.
+- Existing namespaced aliases used by MeshLED integrations (`lightpath::Object`, `lightpath::RuntimeState`, `lightpath::EmitParams`, etc.) remain available via module headers.
 - `lightpath::Engine` (typed facade) remains the recommended entry point for new host integrations.
+- Install/export package consumers should prefer the stable umbrella (`lightpath/lightpath.hpp`).

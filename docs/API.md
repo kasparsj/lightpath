@@ -8,17 +8,11 @@ This document describes the supported public API in `include/lightpath/`.
 #include <lightpath/lightpath.hpp>
 ```
 
-The umbrella header re-exports:
+The umbrella header re-exports stable installable API headers:
 
 - `lightpath/engine.hpp`
 - `lightpath/types.hpp`
 - `lightpath/status.hpp`
-- `lightpath/topology.hpp`
-- `lightpath/runtime.hpp`
-- `lightpath/rendering.hpp`
-- `lightpath/objects.hpp`
-- `lightpath/factory.hpp`
-- `lightpath/debug.hpp`
 
 ## 2) High-Level Engine API
 
@@ -68,9 +62,10 @@ Thread-safe runtime facade:
 - `uint16_t pixelCount() const`
 - `Result<Color> pixel(uint16_t index, uint8_t max_brightness = 255) const`
 
-## 3) Module Headers
+## 3) Source-Integration Module Headers
 
 These headers expose broader topology/runtime/rendering integration types used by MeshLED.
+They are source-level integration headers and are not part of the installable stable package contract.
 
 ### `lightpath/topology.hpp`
 

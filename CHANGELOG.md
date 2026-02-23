@@ -16,6 +16,7 @@
   - `include/lightpath/objects.hpp`
   - `include/lightpath/factory.hpp`
   - `include/lightpath/debug.hpp`
+- Narrowed `lightpath/lightpath.hpp` to stable installable API headers only (`engine.hpp`, `types.hpp`, `status.hpp`).
 - Added typed status/result error model (`ErrorCode`, `Status`, `Result<T>`).
 
 ### Refactor
@@ -41,6 +42,6 @@
 
 ### Docs
 
-- Reworked `README.md` to match stable + legacy API split.
+- Reworked `README.md` to document stable-vs-source-integration header tiers.
 - Rewrote `docs/API.md` for the current public surface.
 - Updated `MIGRATION.md` with breaking changes and parent migration notes.
