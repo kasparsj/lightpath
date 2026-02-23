@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-matrix:
+    name: Build / Test (${{ matrix.os }}, ${{ matrix.cxx }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain deps (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      - name: Configure default
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake --preset default
+
+      - name: Build default
+        run: cmake --build --preset default --parallel
+
+      - name: Test default
+        run: ctest --preset default --output-on-failure
+
+      - name: Configure warnings
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: cmake --preset warnings
+
+      - name: Build warnings
+        run: cmake --build --preset warnings --parallel
+
+      - name: Test warnings
+        run: ctest --preset warnings --output-on-failure
+
+  sanitizers:
+    name: Sanitizers (Ubuntu, clang)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install toolchain deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ninja-build
+
+      - name: Configure/build/test ASAN
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake --preset asan
+          cmake --build --preset asan --parallel
+          ctest --preset asan --output-on-failure
+
+      - name: Configure/build/test UBSAN
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake --preset ubsan
+          cmake --build --preset ubsan --parallel
+          ctest --preset ubsan --output-on-failure
+
+  static-analysis:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install analysis deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang clang-tidy clang-format ninja-build python3
+
+      - name: Configure analysis build
+        env:
+          CC: clang
+          CXX: clang++
+        run: cmake --preset static-analysis
+
+      - name: clang-format check
+        run: ./scripts/check-clang-format.sh
+
+      - name: clang-tidy check
+        run: ./scripts/run-clang-tidy.sh build/preset-static-analysis
+
+      - name: Validate Conan recipe syntax
+        run: python3 -m py_compile conanfile.py
+
+      - name: Validate vcpkg manifest syntax
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("packaging/vcpkg/vcpkg.json").read_text())
+          assert data["name"] == "lightpath"
+          PY
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install docs deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz ninja-build
+
+      - name: Configure docs
+        run: cmake --preset docs
+
+      - name: Build docs
+        run: cmake --build --preset docs --parallel
