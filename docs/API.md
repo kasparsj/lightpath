@@ -47,6 +47,20 @@ Invariants:
 
 - Grouped topology arrays are bounded by `lightpath::kMaxGroups`
 - `Connection` LED count controls light traversal granularity
+- `Intersection::ports` is a fixed-size slot vector (`std::vector<Port*>` sized by `numPorts`)
+- Removing a `Connection` detaches its endpoint ports from intersections
+
+### Topology Mutation Helpers
+
+`LPObject` exposes runtime-safe connection removal helpers:
+
+- `bool removeConnection(uint8_t groupIndex, size_t index)`
+- `bool removeConnection(Connection* connection)`
+
+Rules:
+
+- Prefer these helpers over manual `delete` + `erase` on `conn[group]`.
+- Successful removal guarantees endpoint intersections no longer retain dangling port pointers.
 
 ### Command Parameter API
 
@@ -120,3 +134,4 @@ Provides inspection helpers for intersections, connections, and weighted model c
 - Legacy symbols remain available from `src/` headers.
 - Public aliases intentionally map to existing types to preserve behavior.
 - Pointer-based `EmitParams*` command lookup signatures are no longer supported.
+- `Intersection::ports` is no longer a raw array pointer and should not be deleted manually.

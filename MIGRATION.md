@@ -20,6 +20,9 @@ manual heap ownership.
    - `LPObject::getParams(char)` now returns `std::optional<EmitParams>` and is `const`.
    - `LPObject::getModelParams(int)` now returns `EmitParams` by value and is `const`.
    - Derived object overrides must match the new signatures.
+7. Topology editing API updates:
+   - `LPObject` now exposes `removeConnection(uint8_t groupIndex, size_t index)` and `removeConnection(Connection*)`.
+   - `Intersection::ports` is now `std::vector<Port*>` (no manual array allocation/deallocation).
 
 ## Why
 
@@ -63,6 +66,16 @@ EmitParams* getParams(char command) override;
 EmitParams getModelParams(int model) const override;
 std::optional<EmitParams> getParams(char command) const override;
 ```
+6. If you mutate topology at runtime, replace direct connection delete/erase with:
+
+```cpp
+// Before
+delete object->conn[group][index];
+object->conn[group].erase(object->conn[group].begin() + index);
+
+// After
+object->removeConnection(group, index);
+```
 
 ## Compatibility / Deprecation Notes
 
@@ -70,6 +83,7 @@ std::optional<EmitParams> getParams(char command) const override;
 - Enable `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS=ON` only for transitional compatibility.
 - No runtime behavior changes are intended in this migration.
 - There is no pointer-based compatibility shim for `getParams`/`getModelParams`; callers and overrides must migrate to value semantics.
+- Port-slot lifetime is now managed automatically during connection teardown; manual `Intersection` port cleanup is no longer needed.
 
 ## Parent Migration Notes (MeshLED)
 
@@ -87,3 +101,4 @@ The parent repository was migrated in the same change set:
 4. Parent command dispatchers migrated to optional/value API:
    - `apps/simulator/src/ofApp.cpp` now consumes `std::optional<EmitParams>`
    - `firmware/esp/LEDLib.h` now consumes `std::optional<EmitParams>`
+5. Parent firmware topology editor now uses `LPObject::removeConnection(...)` and no longer manually deletes from connection vectors.
