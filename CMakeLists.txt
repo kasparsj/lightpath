@@ -7,20 +7,6 @@ option(LIGHTPATH_CORE_ENABLE_ASAN "Enable AddressSanitizer for host builds" OFF)
 option(LIGHTPATH_CORE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for host builds" OFF)
 option(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings and treat warnings as errors" OFF)
 
-# Backward compatibility with legacy cache variable names.
-if(DEFINED LIGHTGRAPH_CORE_BUILD_TESTS)
-  set(LIGHTPATH_CORE_BUILD_TESTS "${LIGHTGRAPH_CORE_BUILD_TESTS}")
-endif()
-if(DEFINED LIGHTGRAPH_CORE_ENABLE_ASAN)
-  set(LIGHTPATH_CORE_ENABLE_ASAN "${LIGHTGRAPH_CORE_ENABLE_ASAN}")
-endif()
-if(DEFINED LIGHTGRAPH_CORE_ENABLE_UBSAN)
-  set(LIGHTPATH_CORE_ENABLE_UBSAN "${LIGHTGRAPH_CORE_ENABLE_UBSAN}")
-endif()
-if(DEFINED LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
-  set(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "${LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS}")
-endif()
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -32,10 +18,10 @@ file(
   "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src/*.cpp"
 )
 
-add_library(lightgraph_core STATIC ${LIGHTPATH_CORE_SOURCES})
+add_library(lightpath_core STATIC ${LIGHTPATH_CORE_SOURCES})
 
 target_include_directories(
-  lightgraph_core
+  lightpath_core
   PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/host/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -57,13 +43,13 @@ if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
       -Wno-undefined-var-template
     )
     target_compile_options(
-      lightgraph_core
+      lightpath_core
       PRIVATE
         ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS}
     )
   elseif(MSVC)
     set(LIGHTPATH_CORE_STRICT_WARNING_FLAGS /W4 /WX)
-    target_compile_options(lightgraph_core PRIVATE /W4 /WX)
+    target_compile_options(lightpath_core PRIVATE /W4 /WX)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS is not configured for this compiler")
   endif()
@@ -71,8 +57,8 @@ endif()
 
 if(LIGHTPATH_CORE_ENABLE_ASAN)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(lightgraph_core PUBLIC -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(lightgraph_core PUBLIC -fsanitize=address)
+    target_compile_options(lightpath_core PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(lightpath_core PUBLIC -fsanitize=address)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_ASAN is only supported with Clang/GCC")
   endif()
@@ -80,8 +66,8 @@ endif()
 
 if(LIGHTPATH_CORE_ENABLE_UBSAN)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(lightgraph_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
-    target_link_options(lightgraph_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
+    target_compile_options(lightpath_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
+    target_link_options(lightpath_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_UBSAN is only supported with Clang/GCC")
   endif()
@@ -91,26 +77,26 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
   enable_testing()
 
   add_executable(
-    lightgraph_core_smoke
+    lightpath_core_smoke
     tests/core_smoke_test.cpp
   )
 
-  target_link_libraries(lightgraph_core_smoke PRIVATE lightgraph_core)
+  target_link_libraries(lightpath_core_smoke PRIVATE lightpath_core)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
-    target_compile_options(lightgraph_core_smoke PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+    target_compile_options(lightpath_core_smoke PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
 
-  add_test(NAME lightgraph_core_smoke COMMAND lightgraph_core_smoke)
+  add_test(NAME lightpath_core_smoke COMMAND lightpath_core_smoke)
 
   add_executable(
-    lightgraph_core_regression
+    lightpath_core_regression
     tests/core_regression_test.cpp
   )
 
-  target_link_libraries(lightgraph_core_regression PRIVATE lightgraph_core)
+  target_link_libraries(lightpath_core_regression PRIVATE lightpath_core)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
-    target_compile_options(lightgraph_core_regression PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+    target_compile_options(lightpath_core_regression PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
 
-  add_test(NAME lightgraph_core_regression COMMAND lightgraph_core_regression)
+  add_test(NAME lightpath_core_regression COMMAND lightpath_core_regression)
 endif()
