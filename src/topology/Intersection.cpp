@@ -121,6 +121,32 @@ Port* Intersection::randomPort(const Port* const incoming, const Behaviour* cons
 
 Port* Intersection::choosePort(const Model* const model, const RuntimeLight* const light) const {
     Port *incoming = light->inPort;
+    if (model == nullptr) {
+        return nullptr;
+    }
+
+    if (model->getRoutingStrategy() == RoutingStrategy::Deterministic) {
+      Port* bestPort = nullptr;
+      uint8_t bestWeight = 0;
+      for (uint8_t i = 0; i < numPorts; i++) {
+        Port* port = ports[i];
+        if (port == nullptr || port == incoming) {
+          continue;
+        }
+        const uint8_t weight = model->get(port, incoming);
+        if (weight > bestWeight || (weight == bestWeight && bestPort != nullptr && port->id < bestPort->id)) {
+          bestWeight = weight;
+          bestPort = port;
+        } else if (bestPort == nullptr && weight == bestWeight) {
+          bestPort = port;
+        }
+      }
+      if (bestPort != nullptr) {
+        return bestPort;
+      }
+      return randomPort(incoming, light->getBehaviour());
+    }
+
     uint16_t sum = sumW(model, incoming);
     if (sum == 0) {
       return randomPort(incoming, light->getBehaviour());

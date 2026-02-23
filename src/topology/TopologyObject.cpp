@@ -1,4 +1,8 @@
 #include <algorithm>
+#include <limits>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "TopologyObject.h"
 #include "Port.h"
 
@@ -30,6 +34,9 @@ TopologyObject::~TopologyObject() {
 // Initialization methods removed - vectors handle dynamic sizing
 
 Model* TopologyObject::addModel(Model *model) {
+    if (model == nullptr) {
+        return nullptr;
+    }
     ownedModels_.emplace_back(model);
 
     // Ensure vector is large enough
@@ -64,6 +71,56 @@ Connection* TopologyObject::addConnection(Connection *connection) {
     return connection;
 }
 
+bool TopologyObject::removeIntersection(uint8_t groupIndex, size_t index) {
+    if (groupIndex >= MAX_GROUPS || index >= inter[groupIndex].size()) {
+        return false;
+    }
+    return removeIntersection(inter[groupIndex][index]);
+}
+
+bool TopologyObject::removeIntersection(Intersection* intersection) {
+    if (intersection == nullptr) {
+        return false;
+    }
+
+    std::vector<Connection*> toRemove;
+    for (uint8_t i = 0; i < MAX_GROUPS; i++) {
+        for (Connection* connection : conn[i]) {
+            if (connection != nullptr &&
+                (connection->from == intersection || connection->to == intersection)) {
+                toRemove.push_back(connection);
+            }
+        }
+    }
+
+    for (Connection* connection : toRemove) {
+        removeConnection(connection);
+    }
+
+    bool removedFromView = false;
+    for (uint8_t i = 0; i < MAX_GROUPS; i++) {
+        auto& intersections = inter[i];
+        const size_t before = intersections.size();
+        intersections.erase(
+            std::remove(intersections.begin(), intersections.end(), intersection),
+            intersections.end());
+        removedFromView = removedFromView || intersections.size() != before;
+    }
+
+    const bool owned = std::any_of(
+        ownedIntersections_.begin(),
+        ownedIntersections_.end(),
+        [intersection](const std::unique_ptr<Intersection>& candidate) {
+            return candidate.get() == intersection;
+        });
+
+    if (owned) {
+        releaseOwnership(intersection);
+    }
+
+    return removedFromView || owned;
+}
+
 bool TopologyObject::removeConnection(uint8_t groupIndex, size_t index) {
     if (groupIndex >= MAX_GROUPS || index >= conn[groupIndex].size()) {
         return false;
@@ -89,6 +146,260 @@ bool TopologyObject::removeConnection(Connection* connection) {
     return false;
 }
 
+TopologySnapshot TopologyObject::exportSnapshot() const {
+    TopologySnapshot snapshot{};
+    snapshot.pixelCount = pixelCount;
+    snapshot.gaps = gaps;
+
+    std::unordered_set<const Intersection*> seenIntersections;
+    std::vector<const Intersection*> orderedIntersections;
+    orderedIntersections.reserve(64);
+    for (uint8_t i = 0; i < MAX_GROUPS; i++) {
+        for (const Intersection* intersection : inter[i]) {
+            if (intersection != nullptr && seenIntersections.insert(intersection).second) {
+                orderedIntersections.push_back(intersection);
+            }
+        }
+    }
+
+    for (const Intersection* intersection : orderedIntersections) {
+        snapshot.intersections.push_back({
+            intersection->id,
+            intersection->numPorts,
+            intersection->topPixel,
+            intersection->bottomPixel,
+            intersection->group,
+        });
+
+        for (uint8_t slot = 0; slot < intersection->numPorts; slot++) {
+            const Port* port = intersection->ports[slot];
+            if (port == nullptr) {
+                continue;
+            }
+            snapshot.ports.push_back({
+                port->id,
+                intersection->id,
+                slot,
+            });
+        }
+    }
+
+    std::unordered_set<const Connection*> seenConnections;
+    for (uint8_t i = 0; i < MAX_GROUPS; i++) {
+        for (const Connection* connection : conn[i]) {
+            if (connection == nullptr || !seenConnections.insert(connection).second) {
+                continue;
+            }
+            if (connection->from == nullptr || connection->to == nullptr) {
+                continue;
+            }
+            snapshot.connections.push_back({
+                connection->from->id,
+                connection->to->id,
+                connection->group,
+                connection->numLeds,
+            });
+        }
+    }
+
+    for (const Model* model : models) {
+        if (model == nullptr) {
+            continue;
+        }
+        TopologyModelSnapshot modelSnapshot{
+            model->id,
+            model->defaultW,
+            model->emitGroups,
+            model->maxLength,
+            model->getRoutingStrategy(),
+            {},
+        };
+
+        for (const auto& weightEntry : model->weights) {
+            if (weightEntry.second == nullptr) {
+                continue;
+            }
+            TopologyPortWeightSnapshot weightSnapshot{
+                weightEntry.first,
+                weightEntry.second->defaultWeight(),
+                {},
+            };
+            for (const auto& conditional : weightEntry.second->conditionalWeights()) {
+                weightSnapshot.conditionals.push_back({
+                    conditional.first,
+                    conditional.second,
+                });
+            }
+            std::sort(
+                weightSnapshot.conditionals.begin(),
+                weightSnapshot.conditionals.end(),
+                [](const TopologyWeightConditionalSnapshot& left, const TopologyWeightConditionalSnapshot& right) {
+                    return left.incomingPortId < right.incomingPortId;
+                });
+
+            modelSnapshot.weights.push_back(weightSnapshot);
+        }
+
+        std::sort(
+            modelSnapshot.weights.begin(),
+            modelSnapshot.weights.end(),
+            [](const TopologyPortWeightSnapshot& left, const TopologyPortWeightSnapshot& right) {
+                return left.outgoingPortId < right.outgoingPortId;
+            });
+
+        snapshot.models.push_back(modelSnapshot);
+    }
+
+    return snapshot;
+}
+
+bool TopologyObject::importSnapshot(const TopologySnapshot& snapshot, bool replaceModels) {
+    if (snapshot.pixelCount == 0) {
+        return false;
+    }
+
+    std::unordered_set<uint8_t> intersectionIds;
+    for (const TopologyIntersectionSnapshot& intersection : snapshot.intersections) {
+        if (intersection.numPorts == 0 || !intersectionIds.insert(intersection.id).second) {
+            return false;
+        }
+    }
+
+    std::unordered_set<uint8_t> snapshotPortIds;
+    for (const TopologyPortSnapshot& port : snapshot.ports) {
+        if (!intersectionIds.count(port.intersectionId) || !snapshotPortIds.insert(port.id).second) {
+            return false;
+        }
+    }
+
+    for (const TopologyConnectionSnapshot& connection : snapshot.connections) {
+        if (!intersectionIds.count(connection.fromIntersectionId) ||
+            !intersectionIds.count(connection.toIntersectionId)) {
+            return false;
+        }
+    }
+
+    for (const TopologyModelSnapshot& model : snapshot.models) {
+        for (const TopologyPortWeightSnapshot& weight : model.weights) {
+            if (!snapshotPortIds.count(weight.outgoingPortId)) {
+                return false;
+            }
+            for (const TopologyWeightConditionalSnapshot& conditional : weight.conditionals) {
+                if (!snapshotPortIds.count(conditional.incomingPortId)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    for (const PixelGap& gap : snapshot.gaps) {
+        if (gap.fromPixel > gap.toPixel || gap.toPixel >= snapshot.pixelCount) {
+            return false;
+        }
+    }
+
+    for (uint8_t g = 0; g < MAX_GROUPS; g++) {
+        while (!conn[g].empty()) {
+            removeConnection(g, conn[g].size() - 1);
+        }
+    }
+    for (uint8_t g = 0; g < MAX_GROUPS; g++) {
+        while (!inter[g].empty()) {
+            removeIntersection(g, inter[g].size() - 1);
+        }
+    }
+
+    if (replaceModels) {
+        models.clear();
+        ownedModels_.clear();
+    }
+
+    gaps.clear();
+    pixelCount = snapshot.pixelCount;
+    realPixelCount = snapshot.pixelCount;
+    for (const PixelGap& gap : snapshot.gaps) {
+        addGap(gap.fromPixel, gap.toPixel);
+    }
+
+    std::unordered_map<uint8_t, Intersection*> intersectionsById;
+    uint16_t maxIntersectionId = 0;
+    for (const TopologyIntersectionSnapshot& intersectionSnapshot : snapshot.intersections) {
+        Intersection* created = addIntersection(new Intersection(
+            intersectionSnapshot.numPorts,
+            intersectionSnapshot.topPixel,
+            intersectionSnapshot.bottomPixel,
+            intersectionSnapshot.group));
+        created->id = intersectionSnapshot.id;
+        intersectionsById[intersectionSnapshot.id] = created;
+        if (intersectionSnapshot.id > maxIntersectionId) {
+            maxIntersectionId = intersectionSnapshot.id;
+        }
+    }
+
+    if (!snapshot.intersections.empty()) {
+        const uint8_t nextId =
+            static_cast<uint8_t>((maxIntersectionId + 1) % (std::numeric_limits<uint8_t>::max() + 1));
+        Intersection::nextId = nextId;
+    }
+
+    for (const TopologyConnectionSnapshot& connectionSnapshot : snapshot.connections) {
+        Intersection* from = intersectionsById[connectionSnapshot.fromIntersectionId];
+        Intersection* to = intersectionsById[connectionSnapshot.toIntersectionId];
+        addConnection(new Connection(from, to, connectionSnapshot.group, connectionSnapshot.numLeds));
+    }
+
+    std::unordered_map<uint8_t, Port*> remappedPorts;
+    for (const TopologyPortSnapshot& portSnapshot : snapshot.ports) {
+        auto intersectionIt = intersectionsById.find(portSnapshot.intersectionId);
+        if (intersectionIt == intersectionsById.end()) {
+            return false;
+        }
+        Intersection* intersection = intersectionIt->second;
+        if (portSnapshot.slotIndex >= intersection->ports.size()) {
+            return false;
+        }
+        Port* port = intersection->ports[portSnapshot.slotIndex];
+        if (port == nullptr) {
+            return false;
+        }
+        remappedPorts[portSnapshot.id] = port;
+    }
+
+    for (const TopologyModelSnapshot& modelSnapshot : snapshot.models) {
+        if (!replaceModels && modelSnapshot.id < models.size() && models[modelSnapshot.id] != nullptr) {
+            continue;
+        }
+
+        auto* model = new Model(
+            modelSnapshot.id,
+            modelSnapshot.defaultWeight,
+            modelSnapshot.emitGroups,
+            modelSnapshot.maxLength,
+            modelSnapshot.routingStrategy);
+        addModel(model);
+
+        for (const TopologyPortWeightSnapshot& weightSnapshot : modelSnapshot.weights) {
+            auto outgoingIt = remappedPorts.find(weightSnapshot.outgoingPortId);
+            if (outgoingIt == remappedPorts.end()) {
+                return false;
+            }
+            Weight* weight = model->_getOrCreate(outgoingIt->second, weightSnapshot.defaultWeight);
+            if (weight == nullptr) {
+                return false;
+            }
+            for (const TopologyWeightConditionalSnapshot& conditional : weightSnapshot.conditionals) {
+                auto incomingIt = remappedPorts.find(conditional.incomingPortId);
+                if (incomingIt == remappedPorts.end()) {
+                    return false;
+                }
+                weight->add(incomingIt->second, conditional.weight);
+            }
+        }
+    }
+
+    return true;
+}
+
 void TopologyObject::releaseOwnership(Connection* connection) {
     auto it = std::find_if(
         ownedConnections_.begin(),
@@ -97,6 +408,19 @@ void TopologyObject::releaseOwnership(Connection* connection) {
 
     if (it != ownedConnections_.end()) {
         ownedConnections_.erase(it);
+    }
+}
+
+void TopologyObject::releaseOwnership(Intersection* intersection) {
+    auto it = std::find_if(
+        ownedIntersections_.begin(),
+        ownedIntersections_.end(),
+        [intersection](const std::unique_ptr<Intersection>& candidate) {
+            return candidate.get() == intersection;
+        });
+
+    if (it != ownedIntersections_.end()) {
+        ownedIntersections_.erase(it);
     }
 }
 

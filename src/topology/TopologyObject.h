@@ -14,6 +14,56 @@ struct PixelGap {
     uint16_t toPixel;
 };
 
+struct TopologyPortSnapshot {
+    uint8_t id;
+    uint8_t intersectionId;
+    uint8_t slotIndex;
+};
+
+struct TopologyWeightConditionalSnapshot {
+    uint8_t incomingPortId;
+    uint8_t weight;
+};
+
+struct TopologyPortWeightSnapshot {
+    uint8_t outgoingPortId;
+    uint8_t defaultWeight;
+    std::vector<TopologyWeightConditionalSnapshot> conditionals;
+};
+
+struct TopologyModelSnapshot {
+    uint8_t id;
+    uint8_t defaultWeight;
+    uint8_t emitGroups;
+    uint16_t maxLength;
+    RoutingStrategy routingStrategy;
+    std::vector<TopologyPortWeightSnapshot> weights;
+};
+
+struct TopologyIntersectionSnapshot {
+    uint8_t id;
+    uint8_t numPorts;
+    uint16_t topPixel;
+    int16_t bottomPixel;
+    uint8_t group;
+};
+
+struct TopologyConnectionSnapshot {
+    uint8_t fromIntersectionId;
+    uint8_t toIntersectionId;
+    uint8_t group;
+    uint16_t numLeds;
+};
+
+struct TopologySnapshot {
+    uint16_t pixelCount;
+    std::vector<TopologyIntersectionSnapshot> intersections;
+    std::vector<TopologyConnectionSnapshot> connections;
+    std::vector<TopologyModelSnapshot> models;
+    std::vector<TopologyPortSnapshot> ports;
+    std::vector<PixelGap> gaps;
+};
+
 class TopologyObject {
 
   public:
@@ -36,8 +86,12 @@ class TopologyObject {
     virtual Model* addModel(Model *model);
     virtual Intersection* addIntersection(Intersection *intersection);
     virtual Connection* addConnection(Connection *connection);
+    bool removeIntersection(uint8_t groupIndex, size_t index);
+    bool removeIntersection(Intersection* intersection);
     bool removeConnection(uint8_t groupIndex, size_t index);
     bool removeConnection(Connection* connection);
+    TopologySnapshot exportSnapshot() const;
+    bool importSnapshot(const TopologySnapshot& snapshot, bool replaceModels = true);
     virtual Connection* addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t group, uint8_t numPorts = 2);
     Model* getModel(int i) {
       return i >= 0 && static_cast<size_t>(i) < models.size() ? models[i] : nullptr;
@@ -101,6 +155,7 @@ class TopologyObject {
 
   protected:
     void releaseOwnership(Connection* connection);
+    void releaseOwnership(Intersection* intersection);
 
   private:
     std::vector<std::unique_ptr<Intersection>> ownedIntersections_;

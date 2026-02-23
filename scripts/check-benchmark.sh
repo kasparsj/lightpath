@@ -13,7 +13,10 @@ fi
 output="$("$BENCHMARK_BIN")"
 echo "$output"
 
-fps="$(echo "$output" | awk -F': ' '/Benchmark approx frames\/sec/ {print $2}' | tail -n 1)"
+fps="$(echo "$output" | awk -F': ' '/Benchmark minimum frames\/sec/ {print $2}' | tail -n 1)"
+if [[ -z "$fps" ]]; then
+  fps="$(echo "$output" | awk -F': ' '/Benchmark approx frames\/sec/ {print $2}' | tail -n 1)"
+fi
 if [[ -z "$fps" ]]; then
   echo "Unable to parse benchmark frames/sec from output" >&2
   exit 1
@@ -33,4 +36,3 @@ if measured < threshold:
     raise SystemExit(1)
 print(f"Benchmark guardrail passed: {measured:.2f} fps >= {threshold:.2f} fps")
 PY
-

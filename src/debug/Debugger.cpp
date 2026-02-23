@@ -35,13 +35,12 @@ Debugger::Debugger(TopologyObject &object) : object(object) {
         if (model == nullptr) {
             continue;
         }
-        for (uint8_t j=0; j<model->weights->size(); j++) {
-            uint8_t portId = model->weights->keyAt(j);
+        for (const auto& entry : model->weights) {
+            uint8_t portId = entry.first;
             Port* port = ports[portId];
             if (port == nullptr) {
                 continue;
             }
-            //Weight* weight = model->weights->valueAt(j);
             weightPixels[model->id][port->intersection->topPixel] = true;
         }
     }
