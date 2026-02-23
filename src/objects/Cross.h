@@ -36,9 +36,8 @@ class Cross : public LPObject {
     float getProgressOnLine(uint16_t pixel, bool isVertical) const;
     uint16_t getPixelOnLine(float perc, bool isVertical) const;
     
-    EmitParams* getModelParams(int model) override {
-        EmitParams* params = new EmitParams(model % (CrossModel::C_LAST + 1), LPRandom::randomSpeed());
-        return params;
+    EmitParams getModelParams(int model) const override {
+        return EmitParams(model % (CrossModel::C_LAST + 1), LPRandom::randomSpeed());
     }
 
   private:

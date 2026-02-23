@@ -22,8 +22,8 @@ class EmptyObject : public LPObject {
         return mirroredPixels;
     }
 
-    EmitParams* getModelParams(int model) override {
-        return new EmitParams(model % 1, 1.0f);
+    EmitParams getModelParams(int model) const override {
+        return EmitParams(model % 1, 1.0f);
     }
 
   private:

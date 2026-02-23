@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -42,8 +43,8 @@ class SinglePixelObject : public LPObject {
         return mirroredPixels;
     }
 
-    EmitParams* getModelParams(int model) override {
-        return new EmitParams(model % 1, 1.0f);
+    EmitParams getModelParams(int model) const override {
+        return EmitParams(model % 1, 1.0f);
     }
 
   private:
@@ -87,30 +88,40 @@ int main() {
     // Off-by-one regression: model selector should allow LAST enum values.
     {
         Line line(LINE_PIXEL_COUNT);
-        EmitParams* lineParams = line.getModelParams(L_BOUNCE);
-        if (lineParams->model != L_BOUNCE) {
-            delete lineParams;
+        EmitParams lineParams = line.getModelParams(L_BOUNCE);
+        if (lineParams.model != L_BOUNCE) {
             return fail("Line::getModelParams should preserve L_BOUNCE model");
         }
-        delete lineParams;
     }
     {
         Cross cross(CROSS_PIXEL_COUNT);
-        EmitParams* crossParams = cross.getModelParams(C_DIAGONAL);
-        if (crossParams->model != C_DIAGONAL) {
-            delete crossParams;
+        EmitParams crossParams = cross.getModelParams(C_DIAGONAL);
+        if (crossParams.model != C_DIAGONAL) {
             return fail("Cross::getModelParams should preserve C_DIAGONAL model");
         }
-        delete crossParams;
     }
     {
         Triangle triangle(TRIANGLE_PIXEL_COUNT);
-        EmitParams* triangleParams = triangle.getModelParams(T_COUNTER_CLOCKWISE);
-        if (triangleParams->model != T_COUNTER_CLOCKWISE) {
-            delete triangleParams;
+        EmitParams triangleParams = triangle.getModelParams(T_COUNTER_CLOCKWISE);
+        if (triangleParams.model != T_COUNTER_CLOCKWISE) {
             return fail("Triangle::getModelParams should preserve T_COUNTER_CLOCKWISE model");
         }
-        delete triangleParams;
+    }
+
+    // Command parameter lookup should be non-owning and optional-based.
+    {
+        Line line(LINE_PIXEL_COUNT);
+        const std::optional<EmitParams> one = line.getParams('1');
+        if (!one.has_value()) {
+            return fail("Line::getParams('1') should return parameters");
+        }
+        const std::optional<EmitParams> segment = line.getParams('/');
+        if (!segment.has_value() || segment->getLength() != 1) {
+            return fail("Line::getParams('/') should produce 1-length render-segment params");
+        }
+        if (line.getParams('x').has_value()) {
+            return fail("Line::getParams('x') should return no params");
+        }
     }
 
     // Palette wrap behavior should be deterministic in repeat mode.

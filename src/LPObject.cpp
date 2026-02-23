@@ -1,4 +1,3 @@
-#include <math.h>
 #include "LPObject.h"
 #include "Port.h"
 
@@ -48,7 +47,7 @@ Model* LPObject::addModel(Model *model) {
 
 Intersection* LPObject::addIntersection(Intersection *intersection) {
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
-        if (intersection->group & (uint8_t) pow(2, i)) {
+        if (intersection->group & groupMaskForIndex(i)) {
             inter[i].push_back(intersection);
             break;
         }
@@ -58,7 +57,7 @@ Intersection* LPObject::addIntersection(Intersection *intersection) {
 
 Connection* LPObject::addConnection(Connection *connection) {
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
-        if (connection->group & (uint8_t) pow(2, i)) {
+        if (connection->group & groupMaskForIndex(i)) {
             conn[i].push_back(connection);
             break;
         }
@@ -87,7 +86,7 @@ Connection* LPObject::addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t gr
 
 Intersection* LPObject::getIntersection(uint8_t i, uint8_t groups) {
     for (uint8_t j = 0; j < MAX_GROUPS; j++) {
-        if (groups == 0 || groups & (uint8_t) pow(2, j)) {
+        if (groups == 0 || (groups & groupMaskForIndex(j))) {
             if (i < inter[j].size()) {
                 return inter[j][i];
             }
@@ -99,7 +98,7 @@ Intersection* LPObject::getIntersection(uint8_t i, uint8_t groups) {
 
 Connection* LPObject::getConnection(uint8_t i, uint8_t groups) {
     for (uint8_t j = 0; j < MAX_GROUPS; j++) {
-        if (groups == 0 || groups & (uint8_t) pow(2, j)) {
+        if (groups == 0 || (groups & groupMaskForIndex(j))) {
             if (i < conn[j].size()) {
                 return conn[j][i];
             }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 #include "Intersection.h"
 #include "Connection.h"
@@ -25,6 +26,10 @@ class LPObject {
     LPObject(uint16_t pixelCount);
     virtual ~LPObject();
 
+    static constexpr uint8_t groupMaskForIndex(uint8_t index) {
+        return static_cast<uint8_t>(1u << index);
+    }
+
     void addGap(uint16_t fromPixel, uint16_t toPixel);
     virtual Model* addModel(Model *model);
     virtual Intersection* addIntersection(Intersection *intersection);
@@ -37,7 +42,7 @@ class LPObject {
     uint8_t countIntersections(uint8_t groups) {
         uint8_t count = 0;
         for (uint8_t i=0; i<MAX_GROUPS; i++) {
-            if (groups == 0 || groups & (uint8_t) pow(2, i)) {
+            if (groups == 0 || (groups & groupMaskForIndex(i))) {
                 count += inter[i].size();
             }
         }
@@ -47,7 +52,7 @@ class LPObject {
     uint8_t countConnections(uint8_t groups) {
         uint8_t count = 0;
         for (uint8_t i=0; i<MAX_GROUPS; i++) {
-            if (groups == 0 || groups & (uint8_t) pow(2, i)) {
+            if (groups == 0 || (groups & groupMaskForIndex(i))) {
                 count += conn[i].size();
             }
         }
@@ -61,7 +66,7 @@ class LPObject {
     uint16_t translateToLogicalPixel(uint16_t realPixel);
     bool isPixelInGap(uint16_t logicalPixel);
     
-    virtual EmitParams* getParams(char command) {
+    virtual std::optional<EmitParams> getParams(char command) const {
         switch (command) {
             case '1':
             case '2':
@@ -71,24 +76,23 @@ class LPObject {
             case '6':
             case '7': {
                 int model = command - '1';
-                EmitParams* params = this->getModelParams(model);
-                return params;
+                return getModelParams(model);
             }
             case '/': {
-                EmitParams* params = new EmitParams();
-                params->behaviourFlags |= B_RENDER_SEGMENT;
-                params->setLength(1);
+                EmitParams params;
+                params.behaviourFlags |= B_RENDER_SEGMENT;
+                params.setLength(1);
                 return params;
             }
             case '?': { // emitNoise
-                EmitParams* params = new EmitParams();
+                EmitParams params;
                 //params->order = LIST_NOISE;
-                params->behaviourFlags |= B_BRI_CONST_NOISE;
+                params.behaviourFlags |= B_BRI_CONST_NOISE;
                 return params;
             }
         }
-        return NULL;
+        return std::nullopt;
     }
-    virtual EmitParams* getModelParams(int model) = 0;
+    virtual EmitParams getModelParams(int model) const = 0;
 
 };

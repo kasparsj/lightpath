@@ -27,9 +27,8 @@ class Line : public LPObject {
     float getProgressOnLine(uint16_t pixel) const;
     uint16_t getPixelOnLine(float perc) const;
     
-    EmitParams* getModelParams(int model) override {
-        EmitParams* params = new EmitParams(model % (LineModel::L_LAST + 1), LPRandom::randomSpeed());
-        return params;
+    EmitParams getModelParams(int model) const override {
+        return EmitParams(model % (LineModel::L_LAST + 1), LPRandom::randomSpeed());
     }
 
   private:
