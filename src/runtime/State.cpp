@@ -1,5 +1,7 @@
 #include "State.h"
 
+#include <cmath>
+
 #include "../core/Platform.h"
 #include "../topology/LPObject.h"
 #include "../topology/Model.h"
@@ -326,9 +328,9 @@ void State::setPixel(uint16_t pixel, ColorRGB &color, const LightList* const lig
             break;
 
         case BLEND_DIFFERENCE:
-            r = abs(r - newR);
-            g = abs(g - newG);
-            b = abs(b - newB);
+            r = std::abs(r - newR);
+            g = std::abs(g - newG);
+            b = std::abs(b - newB);
             break;
 
         case BLEND_EXCLUSION:
