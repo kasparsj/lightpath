@@ -96,6 +96,13 @@ Legacy includes from `src/` are no longer exported by default. The CMake option
 `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` controls whether `src/` is exported
 as a public include directory for transitional builds.
 
+Source-level API break: command parameter APIs are now value-based:
+
+- `LPObject::getParams(char)` -> `std::optional<EmitParams>`
+- `LPObject::getModelParams(int)` -> `EmitParams` (by value)
+
+This removes manual `new`/`delete` ownership patterns for command dispatch.
+
 ## Additional Docs
 
 - API reference: `docs/API.md`

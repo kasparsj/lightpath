@@ -33,6 +33,7 @@ Invariants:
 
 - `model` must reference a valid model for the active object (`State::emit` returns `-1` when invalid)
 - `setLength(...)` controls requested list length (or random when omitted)
+- `EmitParams` is a value type; command lookup APIs do not transfer heap ownership
 
 ## Topology Module (`topology.hpp`)
 
@@ -46,6 +47,19 @@ Invariants:
 
 - Grouped topology arrays are bounded by `lightpath::kMaxGroups`
 - `Connection` LED count controls light traversal granularity
+
+### Command Parameter API
+
+`LPObject` command dispatch entry points:
+
+- `std::optional<EmitParams> getParams(char command) const`
+- `EmitParams getModelParams(int model) const`
+
+Rules:
+
+- `getParams(...)` returns `std::nullopt` when a command does not map to an emit action.
+- Returned `EmitParams` values are stack/value-managed; callers must not `delete` anything.
+- Custom objects overriding these APIs must use the exact `const` signatures above.
 
 ## Runtime Module (`runtime.hpp`)
 
@@ -105,3 +119,4 @@ Provides inspection helpers for intersections, connections, and weighted model c
 
 - Legacy symbols remain available from `src/` headers.
 - Public aliases intentionally map to existing types to preserve behavior.
+- Pointer-based `EmitParams*` command lookup signatures are no longer supported.

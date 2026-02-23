@@ -8,6 +8,7 @@
 - Added umbrella include `lightpath/lightpath.hpp`.
 - Added object factory helper `lightpath::makeObject(...)`.
 - Added RAII runtime facade `lightpath::Engine`.
+- Breaking change: `LPObject::getParams(char)` now returns `std::optional<EmitParams>` and `LPObject::getModelParams(int)` now returns `EmitParams` by value (both `const`).
 
 ### Build
 
@@ -27,6 +28,7 @@
 
 - Added `tests/public_api_test.cpp` for public API coverage.
 - Added example execution to CTest when tests are enabled.
+- Extended regression coverage for optional/value command-parameter API behavior.
 
 ### Docs
 
