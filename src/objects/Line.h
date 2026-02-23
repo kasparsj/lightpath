@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Config.h"
-#include "../LPObject.h"
+#include "../topology/LPObject.h"
 
 #define LINE_PIXEL_COUNT 300  // Line from pixel 0 to 287
 

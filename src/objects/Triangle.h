@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Config.h"
-#include "../LPObject.h"
+#include "../topology/LPObject.h"
 
 #define TRIANGLE_PIXEL_COUNT 900
 

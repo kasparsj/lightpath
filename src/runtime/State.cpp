@@ -1,8 +1,8 @@
 #include "State.h"
-#include "Model.h"
+#include "../topology/Model.h"
 #include "Behaviour.h"
 #include "LightList.h"
-#include "Palettes.h"
+#include "../rendering/Palettes.h"
 
 #ifdef HD_OSC_REPLY
 #include <ArduinoOSC.h>

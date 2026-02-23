@@ -1,7 +1,7 @@
 #include <math.h>
 #include "Light.h"
 #include "LightList.h"
-#include "Globals.h"
+#include "../Globals.h"
 
 Light::Light(LightList *list, float speed, uint32_t lifeMillis, uint16_t idx, uint8_t maxBri) : LPLight(list, idx, maxBri) {
     this->speed = speed;

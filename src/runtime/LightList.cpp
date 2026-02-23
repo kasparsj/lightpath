@@ -1,7 +1,7 @@
 #include "LightList.h"
 #include "Light.h"
-#include "Model.h"
-#include "Globals.h"
+#include "../topology/Model.h"
+#include "../Globals.h"
 #include <stdio.h>
 #include <vector>
 

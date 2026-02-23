@@ -9,7 +9,7 @@ option(LIGHTPATH_CORE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for host b
 option(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings and treat warnings as errors" OFF)
 option(
   LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS
-  "Expose legacy src include path for downstream compatibility"
+  "Expose src/ as a public include root for transitional internal module includes"
   OFF
 )
 

@@ -1,9 +1,9 @@
 #include "LPLight.h"
 #include "LightList.h"
-#include "Connection.h"
-#include "Port.h"
-#include "ofxEasing.h"
-#include "Globals.h"
+#include "../topology/Connection.h"
+#include "../topology/Port.h"
+#include "../ofxEasing.h"
+#include "../Globals.h"
 
 uint16_t LPLight::pixels[CONNECTION_MAX_LEDS] = {0};
 

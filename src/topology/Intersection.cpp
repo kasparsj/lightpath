@@ -1,7 +1,7 @@
 #include "Intersection.h"
 #include "Connection.h"
 #include "Model.h"
-#include "Light.h"
+#include "../runtime/Light.h"
 
 uint8_t Intersection::nextId = 0;
 

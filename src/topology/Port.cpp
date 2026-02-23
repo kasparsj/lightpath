@@ -1,7 +1,7 @@
 #include "Port.h"
 #include "Connection.h"
 #include "Intersection.h"
-#include "LPLight.h"
+#include "../runtime/LPLight.h"
 
 // Initialize function pointer to null
 void (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, LPLight* const light, bool sendList) = nullptr;

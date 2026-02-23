@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Config.h"
-#include "../LPObject.h"
+#include "../topology/LPObject.h"
 
 enum HeptagonStarModel {
     M_DEFAULT = 0,

@@ -1,7 +1,7 @@
 #include "Behaviour.h"
 #include "LPLight.h"
-#include "Model.h"
-#include "Globals.h"
+#include "../topology/Model.h"
+#include "../Globals.h"
 
 uint16_t Behaviour::getBri(const LPLight *light) const {
   if (flags & B_BRI_CONST_NOISE) {
