@@ -1,0 +1,105 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Default",
+      "description": "Default host build with tests and examples",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/preset-default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "LIGHTPATH_CORE_BUILD_TESTS": "ON",
+        "LIGHTPATH_CORE_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "warnings",
+      "displayName": "Warnings As Errors",
+      "description": "Strict warning profile for CI",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/preset-warnings",
+      "cacheVariables": {
+        "LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS": "ON"
+      }
+    },
+    {
+      "name": "asan",
+      "displayName": "AddressSanitizer",
+      "description": "ASAN profile for CI",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/preset-asan",
+      "cacheVariables": {
+        "LIGHTPATH_CORE_BUILD_EXAMPLES": "OFF",
+        "LIGHTPATH_CORE_ENABLE_ASAN": "ON"
+      }
+    },
+    {
+      "name": "ubsan",
+      "displayName": "UndefinedBehaviorSanitizer",
+      "description": "UBSAN profile for CI",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/preset-ubsan",
+      "cacheVariables": {
+        "LIGHTPATH_CORE_BUILD_EXAMPLES": "OFF",
+        "LIGHTPATH_CORE_ENABLE_UBSAN": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "warnings",
+      "configurePreset": "warnings"
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan"
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "warnings",
+      "configurePreset": "warnings",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=0"
+      }
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

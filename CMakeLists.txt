@@ -1,12 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(lightpath_core LANGUAGES CXX)
+project(lightpath_core VERSION 1.0.0 LANGUAGES CXX)
+
+include(CMakePackageConfigHelpers)
+include(GNUInstallDirs)
 
 option(LIGHTPATH_CORE_BUILD_TESTS "Build Lightpath core tests" ON)
 option(LIGHTPATH_CORE_BUILD_EXAMPLES "Build Lightpath examples" ON)
 option(LIGHTPATH_CORE_ENABLE_ASAN "Enable AddressSanitizer for host builds" OFF)
 option(LIGHTPATH_CORE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for host builds" OFF)
 option(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings and treat warnings as errors" OFF)
+option(
+  LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS
+  "Install legacy compatibility headers that expose internal types"
+  OFF
+)
 option(
   LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS
   "Expose src/ as a public include root for transitional internal module includes"
@@ -26,19 +34,80 @@ file(
 
 add_library(lightpath_core STATIC ${LIGHTPATH_CORE_SOURCES})
 add_library(lightpath::lightpath ALIAS lightpath_core)
+set_target_properties(lightpath_core PROPERTIES EXPORT_NAME lightpath)
 
 target_include_directories(
   lightpath_core
   PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/host/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
   PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/host/include"
 )
 
 if(LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS)
   target_include_directories(lightpath_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
 endif()
+
+set(
+  LIGHTPATH_CORE_PUBLIC_HEADERS
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/lightpath.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/engine.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/status.hpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/types.hpp"
+)
+
+install(
+  TARGETS lightpath_core
+  EXPORT lightpathTargets
+  ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+)
+
+install(
+  FILES ${LIGHTPATH_CORE_PUBLIC_HEADERS}
+  DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/lightpath"
+)
+
+if(LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS)
+  install(
+    FILES "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/legacy.hpp"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/lightpath"
+  )
+  install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/legacy"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/lightpath"
+    FILES_MATCHING PATTERN "*.hpp"
+  )
+endif()
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/lightpathConfig.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/lightpathConfig.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/lightpath"
+)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/lightpathConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY SameMajorVersion
+)
+
+install(
+  EXPORT lightpathTargets
+  FILE lightpathTargets.cmake
+  NAMESPACE lightpath::
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/lightpath"
+)
+
+install(
+  FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/lightpathConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/lightpathConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/lightpath"
+)
 
 if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
@@ -147,4 +216,24 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
   endif()
 
   add_test(NAME lightpath_core_public_api COMMAND lightpath_core_public_api)
+
+  add_executable(
+    lightpath_core_api_fuzz
+    tests/api_fuzz_test.cpp
+  )
+  target_link_libraries(lightpath_core_api_fuzz PRIVATE lightpath_core)
+  if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
+    target_compile_options(lightpath_core_api_fuzz PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+  endif()
+  add_test(NAME lightpath_core_api_fuzz COMMAND lightpath_core_api_fuzz)
+
+  add_executable(
+    lightpath_core_mutation_edges
+    tests/core_mutation_edge_test.cpp
+  )
+  target_link_libraries(lightpath_core_mutation_edges PRIVATE lightpath_core)
+  if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
+    target_compile_options(lightpath_core_mutation_edges PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+  endif()
+  add_test(NAME lightpath_core_mutation_edges COMMAND lightpath_core_mutation_edges)
 endif()

@@ -1,7 +1,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
-#include <vector>
 
 #include <lightpath/lightpath.hpp>
 
@@ -13,7 +12,7 @@ int fail(const std::string& message) {
 }
 
 bool isNonBlack(const lightpath::Color& color) {
-    return color.R > 0 || color.G > 0 || color.B > 0;
+    return color.r > 0 || color.g > 0 || color.b > 0;
 }
 
 }  // namespace
@@ -21,63 +20,70 @@ bool isNonBlack(const lightpath::Color& color) {
 int main() {
     std::srand(11);
 
-    // Factory defaults should be deterministic for built-in objects.
-    {
-        auto line = lightpath::makeObject(lightpath::BuiltinObjectType::Line);
-        if (line->pixelCount != lightpath::kLinePixelCount) {
-            return fail("makeObject(Line) did not use default line pixel count");
-        }
-    }
-    {
-        auto triangle = lightpath::makeObject(lightpath::BuiltinObjectType::Triangle);
-        if (triangle->pixelCount != lightpath::kTrianglePixelCount) {
-            return fail("makeObject(Triangle) did not use default triangle pixel count");
-        }
+    lightpath::EngineConfig config;
+    config.object_type = lightpath::ObjectType::Line;
+    config.pixel_count = 64;
+    lightpath::Engine engine(config);
+
+    if (engine.pixelCount() != 64) {
+        return fail("Engine did not respect configured pixel count");
     }
 
-    // Engine facade should drive the existing runtime behavior.
-    auto object = lightpath::makeObject(lightpath::BuiltinObjectType::Line, 64);
-    lightpath::Engine engine(std::move(object));
-
-    lightpath::EmitParams params(0, 1.0f, 0x22AA44);
-    params.setLength(5);
-    params.noteId = 7;
-
-    const int8_t listIndex = engine.state().emit(params);
-    if (listIndex < 0) {
-        return fail("Engine state emit failed");
+    lightpath::EmitCommand invalid;
+    invalid.model = 99;
+    const auto invalid_result = engine.emit(invalid);
+    if (invalid_result.ok() || invalid_result.status().code() != lightpath::ErrorCode::InvalidModel) {
+        return fail("Invalid model emit did not return ErrorCode::InvalidModel");
     }
 
-    lightpath::millis() = 0;
+    lightpath::EmitCommand invalid_brightness;
+    invalid_brightness.model = 0;
+    invalid_brightness.min_brightness = 220;
+    invalid_brightness.max_brightness = 120;
+    const auto invalid_brightness_result = engine.emit(invalid_brightness);
+    if (invalid_brightness_result.ok() ||
+        invalid_brightness_result.status().code() != lightpath::ErrorCode::InvalidArgument) {
+        return fail("Invalid brightness bounds did not return ErrorCode::InvalidArgument");
+    }
+
+    lightpath::EmitCommand command;
+    command.model = 0;
+    command.speed = 1.0f;
+    command.length = 5;
+    command.color = 0x22AA44;
+    command.note_id = 7;
+
+    const auto emit_result = engine.emit(command);
+    if (!emit_result) {
+        return fail("Valid emit command failed");
+    }
+
     for (int frame = 0; frame < 32; ++frame) {
-        lightpath::millis() += 16;
-        engine.update(lightpath::millis());
+        engine.tick(16);
     }
 
-    int litPixels = 0;
-    for (uint16_t i = 0; i < engine.object().pixelCount; ++i) {
-        if (isNonBlack(engine.state().getPixel(i))) {
-            ++litPixels;
+    int lit_pixels = 0;
+    for (uint16_t i = 0; i < engine.pixelCount(); ++i) {
+        const auto pixel = engine.pixel(i);
+        if (!pixel) {
+            return fail("pixel() failed unexpectedly for valid index");
+        }
+        if (isNonBlack(pixel.value())) {
+            ++lit_pixels;
         }
     }
-    if (litPixels == 0) {
-        return fail("Engine update produced no visible pixels");
+    if (lit_pixels == 0) {
+        return fail("Engine produced no visible pixels");
     }
 
-    // Public palette helpers should remain wired to built-in palette catalog.
-    if (lightpath::paletteCount() == 0) {
-        return fail("paletteCount returned 0");
+    const auto out_of_range = engine.pixel(engine.pixelCount());
+    if (out_of_range.ok() || out_of_range.status().code() != lightpath::ErrorCode::OutOfRange) {
+        return fail("Out-of-range pixel access did not return ErrorCode::OutOfRange");
     }
 
-    lightpath::Palette palette({0xFF0000, 0x00FF00}, {0.0f, 1.0f});
-    std::vector<lightpath::Color> rgb = palette.interpolate(6);
-    if (rgb.size() != 6) {
-        return fail("Palette interpolation returned unexpected size");
-    }
-
-    const lightpath::Color& wrapped = lightpath::Palette::wrapColors(7, 6, rgb, lightpath::kWrapRepeat);
-    if (!isNonBlack(wrapped)) {
-        return fail("Palette wrapColors returned invalid wrapped color");
+    engine.stopAll();
+    for (int frame = 0; frame < 24; ++frame) {
+        engine.tick(16);
     }
 
     return 0;
