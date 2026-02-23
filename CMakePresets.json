@@ -58,7 +58,7 @@
       "binaryDir": "${sourceDir}/build/preset-static-analysis",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "LIGHTPATH_CORE_BUILD_EXAMPLES": "OFF",
+        "LIGHTPATH_CORE_BUILD_EXAMPLES": "ON",
         "LIGHTPATH_CORE_BUILD_BENCHMARKS": "ON"
       }
     },
