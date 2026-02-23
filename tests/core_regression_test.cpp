@@ -6,7 +6,8 @@
 
 #include "../src/runtime/BgLight.h"
 #include "../src/topology/Connection.h"
-#include "../src/Config.h"
+#include "../src/core/Types.h"
+#include "../src/core/Limits.h"
 #include "../src/runtime/EmitParams.h"
 #include "../src/Globals.h"
 #include "../src/topology/Intersection.h"

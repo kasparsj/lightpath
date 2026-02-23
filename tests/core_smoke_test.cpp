@@ -6,6 +6,7 @@
 #include "../src/runtime/EmitParams.h"
 #include "../src/HashMap.h"
 #include "../src/topology/Model.h"
+#include "../src/runtime/LightList.h"
 #include "../src/runtime/State.h"
 #include "../src/objects/Line.h"
 
