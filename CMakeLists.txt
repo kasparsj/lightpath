@@ -378,6 +378,16 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
   endif()
   add_test(NAME lightpath_core_mutation_edges COMMAND lightpath_core_mutation_edges)
 
+  add_executable(
+    lightpath_core_topology_emit
+    tests/core_topology_emit_test.cpp
+  )
+  target_link_libraries(lightpath_core_topology_emit PRIVATE lightpath)
+  if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
+    target_compile_options(lightpath_core_topology_emit PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
+  endif()
+  add_test(NAME lightpath_core_topology_emit COMMAND lightpath_core_topology_emit)
+
   add_test(
     NAME lightpath_core_package_smoke
     COMMAND
