@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(lightpath_core VERSION 1.0.0 LANGUAGES CXX)
+project(lightpath VERSION 1.0.0 LANGUAGES CXX)
 
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 
 option(LIGHTPATH_CORE_BUILD_TESTS "Build Lightpath core tests" ON)
-option(LIGHTPATH_CORE_BUILD_EXAMPLES "Build Lightpath examples" ON)
+option(LIGHTPATH_CORE_BUILD_EXAMPLES "Build Lightpath core examples" ON)
 option(LIGHTPATH_CORE_BUILD_BENCHMARKS "Build Lightpath micro-benchmarks" OFF)
 option(LIGHTPATH_CORE_BUILD_DOCS "Build Lightpath Doxygen docs target" OFF)
 option(LIGHTPATH_CORE_ENABLE_ASAN "Enable AddressSanitizer for host builds" OFF)
@@ -14,7 +14,7 @@ option(LIGHTPATH_CORE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for host b
 option(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings and treat warnings as errors" OFF)
 option(
   LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS
-  "Expose src/ as a public include root for transitional internal module includes"
+  "Expose include/src as public include roots for transitional source integrations"
   OFF
 )
 
@@ -23,7 +23,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(LIGHTPATH_CORE_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
+set(LIGHTPATH_CORE_STABLE_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/stable/include")
 file(MAKE_DIRECTORY "${LIGHTPATH_CORE_GENERATED_INCLUDE_DIR}/lightpath")
+file(MAKE_DIRECTORY "${LIGHTPATH_CORE_STABLE_INCLUDE_DIR}/lightpath")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.hpp.in"
@@ -31,21 +33,80 @@ configure_file(
   @ONLY
 )
 
-file(
-  GLOB_RECURSE LIGHTPATH_CORE_SOURCES
-  CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src/*.cpp"
+set(
+  LIGHTPATH_CORE_STABLE_HEADER_NAMES
+  lightpath.hpp
+  engine.hpp
+  status.hpp
+  types.hpp
 )
 
-add_library(lightpath_core STATIC ${LIGHTPATH_CORE_SOURCES})
-add_library(lightpath::lightpath ALIAS lightpath_core)
-set_target_properties(lightpath_core PROPERTIES EXPORT_NAME lightpath)
+foreach(header_name IN LISTS LIGHTPATH_CORE_STABLE_HEADER_NAMES)
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/${header_name}"
+    "${LIGHTPATH_CORE_STABLE_INCLUDE_DIR}/lightpath/${header_name}"
+    COPYONLY
+  )
+endforeach()
+
+set(
+  LIGHTPATH_CORE_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/FastNoise.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/Globals.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/LPRandom.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/api/Engine.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/debug/LPDebugger.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Cross.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Heptagon3024.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Heptagon919.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/HeptagonStar.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Line.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Triangle.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/Palette.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/Palettes.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/Behaviour.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/BgLight.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/EmitParams.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/LPLight.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/Light.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/LightList.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/State.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/Connection.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/Intersection.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/LPObject.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/LPOwner.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/Model.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/Port.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/topology/Weight.cpp"
+)
+
+set(
+  LIGHTPATH_CORE_VENDOR_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/ColorTheory.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src/ColorUtil.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src/ColorWheelScheme.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src/ColorWheelSchemes.cpp"
+)
+
+add_library(lightpath_vendor_colortheory OBJECT ${LIGHTPATH_CORE_VENDOR_SOURCES})
+target_include_directories(
+  lightpath_vendor_colortheory
+  PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/host/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/ofxColorTheory/src"
+)
+
+add_library(lightpath STATIC ${LIGHTPATH_CORE_SOURCES} $<TARGET_OBJECTS:lightpath_vendor_colortheory>)
+add_library(lightpath::lightpath ALIAS lightpath)
+# Source-tree compatibility alias.
+add_library(lightpath_core ALIAS lightpath)
+set_target_properties(lightpath PROPERTIES EXPORT_NAME lightpath)
 
 target_include_directories(
-  lightpath_core
+  lightpath
   PUBLIC
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${LIGHTPATH_CORE_STABLE_INCLUDE_DIR}>"
     "$<BUILD_INTERFACE:${LIGHTPATH_CORE_GENERATED_INCLUDE_DIR}>"
     "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
   PRIVATE
@@ -53,8 +114,24 @@ target_include_directories(
     "${CMAKE_CURRENT_SOURCE_DIR}/host/include"
 )
 
+# Source-integration headers are intentionally not part of the installed API.
+add_library(lightpath_integration INTERFACE)
+add_library(lightpath::integration ALIAS lightpath_integration)
+target_link_libraries(lightpath_integration INTERFACE lightpath)
+target_include_directories(
+  lightpath_integration
+  INTERFACE
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+)
+
 if(LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS)
-  target_include_directories(lightpath_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_include_directories(
+    lightpath
+    PUBLIC
+      "${CMAKE_CURRENT_SOURCE_DIR}/include"
+      "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  )
 endif()
 
 set(
@@ -71,7 +148,7 @@ set(
 )
 
 install(
-  TARGETS lightpath_core
+  TARGETS lightpath
   EXPORT lightpathTargets
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
@@ -124,7 +201,7 @@ if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
       -Werror
     )
     target_compile_options(
-      lightpath_core
+      lightpath
       PRIVATE
         ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS}
     )
@@ -137,14 +214,14 @@ if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
       -Wno-sometimes-uninitialized
       -Wno-undefined-var-template
     )
-    set_source_files_properties(
-      "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/ColorTheory.cpp"
-      PROPERTIES
-        COMPILE_OPTIONS "${LIGHTPATH_CORE_VENDOR_WARNING_SUPPRESSIONS}"
+    target_compile_options(
+      lightpath_vendor_colortheory
+      PRIVATE
+        ${LIGHTPATH_CORE_VENDOR_WARNING_SUPPRESSIONS}
     )
   elseif(MSVC)
     set(LIGHTPATH_CORE_STRICT_WARNING_FLAGS /W4 /WX)
-    target_compile_options(lightpath_core PRIVATE /W4 /WX)
+    target_compile_options(lightpath PRIVATE /W4 /WX)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS is not configured for this compiler")
   endif()
@@ -152,8 +229,9 @@ endif()
 
 if(LIGHTPATH_CORE_ENABLE_ASAN)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(lightpath_core PUBLIC -fsanitize=address -fno-omit-frame-pointer)
-    target_link_options(lightpath_core PUBLIC -fsanitize=address)
+    target_compile_options(lightpath PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+    target_compile_options(lightpath_vendor_colortheory PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(lightpath PUBLIC -fsanitize=address)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_ASAN is only supported with Clang/GCC")
   endif()
@@ -161,8 +239,9 @@ endif()
 
 if(LIGHTPATH_CORE_ENABLE_UBSAN)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(lightpath_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
-    target_link_options(lightpath_core PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
+    target_compile_options(lightpath PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
+    target_compile_options(lightpath_vendor_colortheory PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
+    target_link_options(lightpath PUBLIC -fsanitize=undefined -fno-sanitize-recover=undefined)
   else()
     message(WARNING "LIGHTPATH_CORE_ENABLE_UBSAN is only supported with Clang/GCC")
   endif()
@@ -173,7 +252,7 @@ if(LIGHTPATH_CORE_BUILD_EXAMPLES)
     lightpath_core_minimal_example
     examples/minimal_usage.cpp
   )
-  target_link_libraries(lightpath_core_minimal_example PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_minimal_example PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_minimal_example PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -184,7 +263,7 @@ if(LIGHTPATH_CORE_BUILD_BENCHMARKS)
     lightpath_core_benchmark
     benchmarks/core_benchmark.cpp
   )
-  target_link_libraries(lightpath_core_benchmark PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_benchmark PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_benchmark PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -213,7 +292,7 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     tests/core_smoke_test.cpp
   )
 
-  target_link_libraries(lightpath_core_smoke PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_smoke PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_smoke PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -225,7 +304,7 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     tests/core_regression_test.cpp
   )
 
-  target_link_libraries(lightpath_core_regression PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_regression PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_regression PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -237,7 +316,7 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     tests/public_api_test.cpp
   )
 
-  target_link_libraries(lightpath_core_public_api PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_public_api PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_public_api PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -248,7 +327,7 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     lightpath_core_api_fuzz
     tests/api_fuzz_test.cpp
   )
-  target_link_libraries(lightpath_core_api_fuzz PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_api_fuzz PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_api_fuzz PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -258,7 +337,7 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     lightpath_core_mutation_edges
     tests/core_mutation_edge_test.cpp
   )
-  target_link_libraries(lightpath_core_mutation_edges PRIVATE lightpath_core)
+  target_link_libraries(lightpath_core_mutation_edges PRIVATE lightpath)
   if(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightpath_core_mutation_edges PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()

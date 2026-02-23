@@ -55,4 +55,4 @@ class LightpathConan(ConanFile):
     def package_info(self):
         self.cpp_info.set_property("cmake_file_name", "lightpath")
         self.cpp_info.set_property("cmake_target_name", "lightpath::lightpath")
-        self.cpp_info.libs = ["lightpath_core"]
+        self.cpp_info.libs = ["lightpath"]
