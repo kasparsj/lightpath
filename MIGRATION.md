@@ -14,21 +14,22 @@ Former compatibility headers were promoted to top-level public headers.
    - `lightpath/legacy/*.hpp`
 2. Include paths changed:
    - `#include <lightpath/legacy.hpp>` -> `#include <lightpath/lightpath.hpp>`
-   - `#include <lightpath/legacy/rendering.hpp>` -> `#include <lightpath/rendering.hpp>`
-   - `#include <lightpath/legacy/debug.hpp>` -> `#include <lightpath/debug.hpp>`
+   - `#include <lightpath/legacy/rendering.hpp>` -> `#include <lightpath/integration/rendering.hpp>`
+   - `#include <lightpath/legacy/debug.hpp>` -> `#include <lightpath/integration/debug.hpp>`
 3. Legacy install option removed:
    - `LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS`
 
 ## New Public Header Layout
 
-Top-level module headers are now the source-integration surface:
+Integration headers are now explicitly separated under `lightpath/integration*`:
 
-- `lightpath/topology.hpp`
-- `lightpath/runtime.hpp`
-- `lightpath/rendering.hpp`
-- `lightpath/objects.hpp`
-- `lightpath/factory.hpp`
-- `lightpath/debug.hpp`
+- `lightpath/integration.hpp`
+- `lightpath/integration/topology.hpp`
+- `lightpath/integration/runtime.hpp`
+- `lightpath/integration/rendering.hpp`
+- `lightpath/integration/objects.hpp`
+- `lightpath/integration/factory.hpp`
+- `lightpath/integration/debug.hpp`
 
 High-level typed stable facade:
 
@@ -53,8 +54,8 @@ High-level typed stable facade:
 If you previously depended on legacy topology/runtime internals, include modules directly:
 
 ```cpp
-#include <lightpath/runtime.hpp>
-#include <lightpath/topology.hpp>
+#include <lightpath/integration/runtime.hpp>
+#include <lightpath/integration/topology.hpp>
 ```
 
 ## Parent Migration Notes (MeshLED)
@@ -62,16 +63,16 @@ If you previously depended on legacy topology/runtime internals, include modules
 Updated in the same change set:
 
 1. `/Users/kasparsj/Work2/meshled/apps/simulator/src/ofApp.h`
-   - `lightpath/legacy.hpp` -> explicit module headers (`debug.hpp`, `objects.hpp`, `runtime.hpp`)
+   - `lightpath/legacy.hpp` -> `lightpath/integration.hpp`
 2. `/Users/kasparsj/Work2/meshled/firmware/esp/LightPath.h`
-   - `lightpath/legacy.hpp` -> explicit module headers (`objects.hpp`, `rendering.hpp`, `runtime.hpp`)
+   - `lightpath/legacy.hpp` -> `lightpath/integration.hpp`
 3. `/Users/kasparsj/Work2/meshled/firmware/esp/WebServerLayers.h`
-   - `lightpath/legacy/rendering.hpp` -> `lightpath/rendering.hpp`
+   - `lightpath/legacy/rendering.hpp` -> `lightpath/integration/rendering.hpp`
 4. `/Users/kasparsj/Work2/meshled/firmware/esp/homo_deus.ino`
-   - `lightpath/legacy/debug.hpp` -> `lightpath/debug.hpp`
+   - `lightpath/legacy/debug.hpp` -> `lightpath/integration/debug.hpp`
 
 ## Notes
 
-- Existing namespaced aliases used by MeshLED integrations (`lightpath::Object`, `lightpath::RuntimeState`, `lightpath::EmitParams`, etc.) remain available via module headers.
+- Existing source-integration aliases now live under `lightpath::integration::*`.
 - `lightpath::Engine` (typed facade) remains the recommended entry point for new host integrations.
 - Install/export package consumers should prefer the stable umbrella (`lightpath/lightpath.hpp`).

@@ -9,13 +9,9 @@
   - `include/lightpath/engine.hpp`
   - `include/lightpath/types.hpp`
   - `include/lightpath/status.hpp`
-- Removed `include/lightpath/legacy*` compatibility layer and promoted module headers to top-level:
-  - `include/lightpath/topology.hpp`
-  - `include/lightpath/runtime.hpp`
-  - `include/lightpath/rendering.hpp`
-  - `include/lightpath/objects.hpp`
-  - `include/lightpath/factory.hpp`
-  - `include/lightpath/debug.hpp`
+- Removed `include/lightpath/legacy*` compatibility layer.
+- Moved source-integration module headers under `include/lightpath/integration/` and `include/lightpath/integration.hpp`.
+- Moved source-integration aliases into `lightpath::integration::*` namespace.
 - Narrowed `lightpath/lightpath.hpp` to stable installable API headers only (`engine.hpp`, `types.hpp`, `status.hpp`).
 - Added typed status/result error model (`ErrorCode`, `Status`, `Result<T>`).
 

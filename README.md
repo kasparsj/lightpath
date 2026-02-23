@@ -13,12 +13,13 @@ Lightpath provides two header tiers:
   - `lightpath/types.hpp`
   - `lightpath/status.hpp`
 - Source-integration module headers (for in-repo integrations like [MeshLED](https://github.com/kasparsj/meshled)):
-  - `lightpath/topology.hpp`
-  - `lightpath/runtime.hpp`
-  - `lightpath/rendering.hpp`
-  - `lightpath/objects.hpp`
-  - `lightpath/factory.hpp`
-  - `lightpath/debug.hpp`
+  - `lightpath/integration.hpp`
+  - `lightpath/integration/topology.hpp`
+  - `lightpath/integration/runtime.hpp`
+  - `lightpath/integration/rendering.hpp`
+  - `lightpath/integration/objects.hpp`
+  - `lightpath/integration/factory.hpp`
+  - `lightpath/integration/debug.hpp`
 
 The stable install/export package installs only the stable API headers.
 

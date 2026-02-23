@@ -67,59 +67,65 @@ Thread-safe runtime facade:
 These headers expose broader topology/runtime/rendering integration types used by MeshLED.
 They are source-level integration headers and are not part of the installable stable package contract.
 
-### `lightpath/topology.hpp`
+Primary integration umbrella:
+
+```cpp
+#include <lightpath/integration.hpp>
+```
+
+### `lightpath/integration/topology.hpp`
 
 Namespace aliases:
 
-- `lightpath::Object` (`LPObject`)
-- `lightpath::Intersection`
-- `lightpath::Connection`
-- `lightpath::Model`
-- `lightpath::Owner`
-- `lightpath::Port`, `lightpath::InternalPort`, `lightpath::ExternalPort`
-- `lightpath::Weight`
+- `lightpath::integration::Object` (`LPObject`)
+- `lightpath::integration::Intersection`
+- `lightpath::integration::Connection`
+- `lightpath::integration::Model`
+- `lightpath::integration::Owner`
+- `lightpath::integration::Port`, `lightpath::integration::InternalPort`, `lightpath::integration::ExternalPort`
+- `lightpath::integration::Weight`
 
-### `lightpath/runtime.hpp`
+### `lightpath/integration/runtime.hpp`
 
 Namespace aliases:
 
-- `lightpath::EmitParam`
-- `lightpath::EmitParams`
-- `lightpath::Behaviour`
-- `lightpath::RuntimeLight`
-- `lightpath::Light`
-- `lightpath::LightList`
-- `lightpath::BgLight`
-- `lightpath::RuntimeState`
+- `lightpath::integration::EmitParam`
+- `lightpath::integration::EmitParams`
+- `lightpath::integration::Behaviour`
+- `lightpath::integration::RuntimeLight`
+- `lightpath::integration::Light`
+- `lightpath::integration::LightList`
+- `lightpath::integration::BgLight`
+- `lightpath::integration::RuntimeState`
 
-### `lightpath/rendering.hpp`
+### `lightpath/integration/rendering.hpp`
 
 Namespace aliases/helpers:
 
-- `lightpath::Palette`
-- `lightpath::kWrapNoWrap`
-- `lightpath::kWrapClampToEdge`
-- `lightpath::kWrapRepeat`
-- `lightpath::kWrapRepeatMirror`
-- `lightpath::paletteCount()`
-- `lightpath::paletteAt(index)`
+- `lightpath::integration::Palette`
+- `lightpath::integration::kWrapNoWrap`
+- `lightpath::integration::kWrapClampToEdge`
+- `lightpath::integration::kWrapRepeat`
+- `lightpath::integration::kWrapRepeatMirror`
+- `lightpath::integration::paletteCount()`
+- `lightpath::integration::paletteAt(index)`
 
-### `lightpath/objects.hpp`
+### `lightpath/integration/objects.hpp`
 
 Namespace aliases/constants:
 
-- `lightpath::Heptagon919`, `lightpath::Heptagon3024`, `lightpath::Line`, `lightpath::Cross`, `lightpath::Triangle`
+- `lightpath::integration::Heptagon919`, `lightpath::integration::Heptagon3024`, `lightpath::integration::Line`, `lightpath::integration::Cross`, `lightpath::integration::Triangle`
 - model enums for built-ins
 - default pixel-count constants (`kLinePixelCount`, etc.)
 
-### `lightpath/factory.hpp`
+### `lightpath/integration/factory.hpp`
 
-- `lightpath::BuiltinObjectType`
-- `lightpath::makeObject(...)`
+- `lightpath::integration::BuiltinObjectType`
+- `lightpath::integration::makeObject(...)`
 
-### `lightpath/debug.hpp`
+### `lightpath/integration/debug.hpp`
 
-- `lightpath::Debugger`
+- `lightpath::integration::Debugger`
 
 ## 4) Invariants
 
