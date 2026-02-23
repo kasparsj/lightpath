@@ -51,12 +51,6 @@ set(
   "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/engine.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/status.hpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/types.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/debug.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/factory.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/objects.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/rendering.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/runtime.hpp"
-  "${CMAKE_CURRENT_SOURCE_DIR}/include/lightpath/topology.hpp"
 )
 
 install(
@@ -225,4 +219,16 @@ if(LIGHTPATH_CORE_BUILD_TESTS)
     target_compile_options(lightpath_core_mutation_edges PRIVATE ${LIGHTPATH_CORE_STRICT_WARNING_FLAGS})
   endif()
   add_test(NAME lightpath_core_mutation_edges COMMAND lightpath_core_mutation_edges)
+
+  add_test(
+    NAME lightpath_core_package_smoke
+    COMMAND
+      ${CMAKE_COMMAND}
+        -Dcmake_command=${CMAKE_COMMAND}
+        -Dmain_build_dir=${CMAKE_BINARY_DIR}
+        -Dsource_dir=${CMAKE_CURRENT_SOURCE_DIR}/tests/package_smoke
+        -Dbinary_dir=${CMAKE_BINARY_DIR}/tests/package_smoke/build
+        -Dinstall_dir=${CMAKE_BINARY_DIR}/tests/package_smoke/install
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/package_smoke/run.cmake
+  )
 endif()
