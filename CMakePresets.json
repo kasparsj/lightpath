@@ -73,6 +73,18 @@
         "LIGHTPATH_CORE_BUILD_EXAMPLES": "OFF",
         "LIGHTPATH_CORE_BUILD_DOCS": "ON"
       }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "description": "Coverage-instrumented profile for gcovr reports",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/build/preset-coverage",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "LIGHTPATH_CORE_BUILD_EXAMPLES": "OFF",
+        "LIGHTPATH_CORE_ENABLE_COVERAGE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -102,6 +114,10 @@
       "targets": [
         "lightpath_core_docs"
       ]
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage"
     }
   ],
   "testPresets": [
@@ -132,6 +148,13 @@
     {
       "name": "ubsan",
       "configurePreset": "ubsan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage",
       "output": {
         "outputOnFailure": true
       }

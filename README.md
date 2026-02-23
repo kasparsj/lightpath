@@ -45,6 +45,7 @@ ctest --test-dir build --output-on-failure
 - `ubsan`: UndefinedBehaviorSanitizer
 - `static-analysis`: compile commands + benchmark target for analysis tooling
 - `docs`: Doxygen docs target
+- `coverage`: gcov/llvm-cov instrumentation profile for report generation
 
 ```bash
 cmake --preset default
@@ -60,6 +61,16 @@ Lightweight static analysis helpers are included:
 ./scripts/check-clang-format.sh
 cmake -S . -B build/static-analysis -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DLIGHTPATH_CORE_BUILD_TESTS=OFF -DLIGHTPATH_CORE_BUILD_EXAMPLES=OFF -DLIGHTPATH_CORE_BUILD_BENCHMARKS=ON
 ./scripts/run-clang-tidy.sh build/static-analysis
+./scripts/check-benchmark.sh build/static-analysis/lightpath_core_benchmark
+```
+
+## Coverage Reporting
+
+```bash
+cmake --preset coverage
+cmake --build --preset coverage --parallel
+ctest --preset coverage
+./scripts/generate-coverage.sh build/preset-coverage
 ```
 
 ## Quickstart (Stable API)
@@ -145,6 +156,7 @@ target_link_libraries(your_target PRIVATE lightpath::lightpath)
 - `LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS` (default: `OFF`)
 - `LIGHTPATH_CORE_ENABLE_ASAN` (default: `OFF`)
 - `LIGHTPATH_CORE_ENABLE_UBSAN` (default: `OFF`)
+- `LIGHTPATH_CORE_ENABLE_COVERAGE` (default: `OFF`)
 - `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` (default: `OFF`)
 
 ## Benchmarks
@@ -179,6 +191,7 @@ In addition to CMake install/export:
 - API reference: `docs/API.md`
 - API compatibility policy: `docs/API_POLICY.md`
 - Packaging guide: `docs/PACKAGING.md`
+- Release process: `docs/RELEASE.md`
 - Migration notes: `MIGRATION.md`
 - Changelog: `CHANGELOG.md`
 

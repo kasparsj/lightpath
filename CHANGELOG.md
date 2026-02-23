@@ -31,7 +31,9 @@
 
 - Added install/export/package-config support (`lightpathConfig.cmake`).
 - Added CI-friendly `CMakePresets.json` profiles:
-  - `default`, `warnings`, `asan`, `ubsan`
+  - `default`, `warnings`, `asan`, `ubsan`, `coverage`
+- Added CI coverage job and gcovr artifact generation.
+- Added benchmark guardrail check in CI static-analysis lane.
 
 ### Tests
 
@@ -47,3 +49,4 @@
 - Updated `MIGRATION.md` with breaking changes and parent migration notes.
 - Added thread-safety, determinism, and complexity guarantees to API docs.
 - Added a host-loop integration example with multi-object + custom palette strategy.
+- Added `docs/RELEASE.md` with tag/release/package publication workflow.

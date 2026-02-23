@@ -47,3 +47,8 @@ vcpkg install lightpath --overlay-ports=/path/to/lightpath/packaging/vcpkg
 The package consumer smoke test under `tests/package_smoke/` validates that an
 installed Lightpath package can be discovered with `find_package(lightpath)`,
 linked, and executed.
+
+## Release Flow
+
+See `docs/RELEASE.md` for the canonical release checklist (version bumps,
+quality gates, tagging, and registry publication guidance).

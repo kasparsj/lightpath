@@ -108,11 +108,19 @@ jobs:
           CXX: clang++
         run: cmake --preset static-analysis
 
+      - name: Build analysis profile
+        run: cmake --build --preset static-analysis --parallel
+
       - name: clang-format check
         run: ./scripts/check-clang-format.sh
 
       - name: clang-tidy check
         run: ./scripts/run-clang-tidy.sh build/preset-static-analysis
+
+      - name: Benchmark guardrail
+        env:
+          LIGHTPATH_MIN_BENCHMARK_FPS: "10000"
+        run: ./scripts/check-benchmark.sh build/preset-static-analysis/lightpath_core_benchmark
 
       - name: Validate Conan recipe syntax
         run: python3 -m py_compile conanfile.py
@@ -125,6 +133,41 @@ jobs:
           data = json.loads(Path("packaging/vcpkg/vcpkg.json").read_text())
           assert data["name"] == "lightpath"
           PY
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install coverage deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc g++ gcovr ninja-build
+
+      - name: Configure coverage
+        env:
+          CC: gcc
+          CXX: g++
+        run: cmake --preset coverage
+
+      - name: Build coverage
+        run: cmake --build --preset coverage --parallel
+
+      - name: Test coverage
+        run: ctest --preset coverage --output-on-failure
+
+      - name: Generate coverage report
+        run: ./scripts/generate-coverage.sh build/preset-coverage
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            build/preset-coverage/coverage/coverage.xml
+            build/preset-coverage/coverage/coverage-summary.json
 
   docs:
     name: Docs
