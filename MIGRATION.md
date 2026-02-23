@@ -1,100 +1,76 @@
 # Lightpath Migration Guide
 
-This guide covers migration to the current refactored Lightpath layout.
+This guide covers migration to the current single-layer header layout.
 
-## What Changed
+## Summary
 
-1. Introduced a stable high-level API:
-   - `lightpath/lightpath.hpp`
-   - `lightpath/engine.hpp`
-   - `lightpath/types.hpp`
-   - `lightpath/status.hpp`
-2. Moved historical broad API into a compatibility namespace/header set:
-   - `lightpath/legacy.hpp`
-   - `lightpath/legacy/*.hpp`
-3. Added CMake install/export support:
-   - installable target: `lightpath::lightpath`
-   - generated package config: `lightpathConfig.cmake`
-4. Added CI-friendly preset profiles (`CMakePresets.json`).
-5. Fixed runtime memory-safety issues found by fuzz/sanitizer tests:
-   - pixel write/read bounds hardening in `State`
-   - `LightList` reallocation/delete size mismatch
-   - connection render index UB under UBSAN
+The `lightpath/legacy*` compatibility layer was removed.
+Former compatibility headers were promoted to top-level public headers.
 
 ## Breaking Changes
 
-1. Top-level historical headers are no longer under `include/lightpath/*.hpp`:
-   - `topology.hpp`, `runtime.hpp`, `rendering.hpp`, `objects.hpp`,
-     `factory.hpp`, `debug.hpp` moved to `include/lightpath/legacy/`.
-2. Consumers of the old broad API must now include:
-   - `#include <lightpath/legacy.hpp>`
-   - or individual `lightpath/legacy/*.hpp` headers.
-3. Stable API is intentionally smaller and engine-oriented; it does not expose
-   direct topology/runtime internals.
+1. Removed:
+   - `lightpath/legacy.hpp`
+   - `lightpath/legacy/*.hpp`
+2. Include paths changed:
+   - `#include <lightpath/legacy.hpp>` -> `#include <lightpath/lightpath.hpp>`
+   - `#include <lightpath/legacy/rendering.hpp>` -> `#include <lightpath/rendering.hpp>`
+   - `#include <lightpath/legacy/debug.hpp>` -> `#include <lightpath/debug.hpp>`
+3. Legacy install option removed:
+   - `LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS`
 
-## Migration Paths
+## New Public Header Layout
 
-### Path A: Stay on Legacy API (fastest)
+Top-level module headers are now part of the primary API surface:
 
-Use:
+- `lightpath/topology.hpp`
+- `lightpath/runtime.hpp`
+- `lightpath/rendering.hpp`
+- `lightpath/objects.hpp`
+- `lightpath/factory.hpp`
+- `lightpath/debug.hpp`
+
+High-level typed facade remains available:
+
+- `lightpath/engine.hpp`
+- `lightpath/types.hpp`
+- `lightpath/status.hpp`
+
+## Typical Migration
+
+### Before
 
 ```cpp
 #include <lightpath/legacy.hpp>
 ```
 
-No semantic changes are required for most existing MeshLED-style code.
-
-### Path B: Migrate to Stable API (recommended for new integrations)
-
-Use:
+### After
 
 ```cpp
 #include <lightpath/lightpath.hpp>
 ```
 
-Then:
+Or include modules directly as needed:
 
-1. Replace direct `State`/`LPObject` ownership with `lightpath::Engine`.
-2. Replace imperative parameter mutation with `lightpath::EmitCommand`.
-3. Replace raw return/error conventions with `lightpath::Result<T>`.
-
-## CMake Migration
-
-### As a subdirectory
-
-```cmake
-add_subdirectory(external/lightpath)
-target_link_libraries(your_target PRIVATE lightpath::lightpath)
-```
-
-### As an installed package
-
-```cmake
-find_package(lightpath CONFIG REQUIRED)
-target_link_libraries(your_target PRIVATE lightpath::lightpath)
-```
-
-Legacy headers are installed only when:
-
-```cmake
--DLIGHTPATH_CORE_INSTALL_LEGACY_HEADERS=ON
+```cpp
+#include <lightpath/runtime.hpp>
+#include <lightpath/topology.hpp>
 ```
 
 ## Parent Migration Notes (MeshLED)
 
-Parent code was updated in the same change set:
+Updated in the same change set:
 
-1. Simulator now includes:
-   - `apps/simulator/src/ofApp.h` -> `#include "lightpath/legacy.hpp"`
-2. Firmware now includes:
-   - `firmware/esp/LightPath.h` -> `#include <lightpath/legacy.hpp>`
-   - `firmware/esp/WebServerLayers.h` -> `#include <lightpath/legacy/rendering.hpp>`
-   - `firmware/esp/homo_deus.ino` (debug mode) -> `#include <lightpath/legacy/debug.hpp>`
-3. Existing include paths for `packages/lightpath/include` remain valid.
+1. `/Users/kasparsj/Work2/meshled/apps/simulator/src/ofApp.h`
+   - `lightpath/legacy.hpp` -> `lightpath/lightpath.hpp`
+2. `/Users/kasparsj/Work2/meshled/firmware/esp/LightPath.h`
+   - `lightpath/legacy.hpp` -> `lightpath/lightpath.hpp`
+3. `/Users/kasparsj/Work2/meshled/firmware/esp/WebServerLayers.h`
+   - `lightpath/legacy/rendering.hpp` -> `lightpath/rendering.hpp`
+4. `/Users/kasparsj/Work2/meshled/firmware/esp/homo_deus.ino`
+   - `lightpath/legacy/debug.hpp` -> `lightpath/debug.hpp`
 
-## Compatibility Notes
+## Notes
 
-- Legacy API remains source-compatible where possible but is now explicitly
-  marked as compatibility surface.
-- Stable API and legacy API can evolve independently.
-- Internal `src/` headers remain non-API and may continue to change.
+- Existing namespaced aliases used by MeshLED integrations (`lightpath::Object`, `lightpath::RuntimeState`, `lightpath::EmitParams`, etc.) remain available via promoted module headers.
+- `lightpath::Engine` (typed facade) remains the recommended entry point for new host integrations.

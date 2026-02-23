@@ -5,16 +5,20 @@ It builds topology, runs animation/runtime state, and produces per-pixel RGB out
 
 ## API Layout
 
-Lightpath currently ships two API layers:
+Lightpath ships one public header surface under `include/lightpath/`:
 
-- Stable high-level API (`include/lightpath/`):
+- High-level engine facade:
   - `lightpath/lightpath.hpp`
   - `lightpath/engine.hpp`
   - `lightpath/types.hpp`
   - `lightpath/status.hpp`
-- Legacy compatibility API (`include/lightpath/legacy.hpp`, `include/lightpath/legacy/*.hpp`):
-  - Exposes historical topology/runtime/rendering types used by MeshLED integrations.
-  - Backed by internal headers in `src/`.
+- Module headers for topology/runtime/rendering/object/debug integration:
+  - `lightpath/topology.hpp`
+  - `lightpath/runtime.hpp`
+  - `lightpath/rendering.hpp`
+  - `lightpath/objects.hpp`
+  - `lightpath/factory.hpp`
+  - `lightpath/debug.hpp`
 
 ## Build and Test
 
@@ -111,12 +115,10 @@ target_link_libraries(your_target PRIVATE lightpath::lightpath)
 - `LIGHTPATH_CORE_ENABLE_ASAN` (default: `OFF`)
 - `LIGHTPATH_CORE_ENABLE_UBSAN` (default: `OFF`)
 - `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` (default: `OFF`)
-- `LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS` (default: `OFF`)
 
 ## Source Layout
 
-- `include/lightpath/` stable public API
-- `include/lightpath/legacy/` compatibility surface
+- `include/lightpath/` public API (facade + module headers)
 - `src/topology/` graph objects and routing
 - `src/runtime/` state update and animation
 - `src/rendering/` palette/blend implementation

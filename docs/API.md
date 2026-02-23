@@ -1,10 +1,8 @@
 # Lightpath API Reference
 
-This document describes the currently supported public API in `include/lightpath/`.
+This document describes the supported public API in `include/lightpath/`.
 
-## 1) Stable API
-
-Primary include:
+## 1) Umbrella Include
 
 ```cpp
 #include <lightpath/lightpath.hpp>
@@ -15,14 +13,14 @@ The umbrella header re-exports:
 - `lightpath/engine.hpp`
 - `lightpath/types.hpp`
 - `lightpath/status.hpp`
+- `lightpath/topology.hpp`
+- `lightpath/runtime.hpp`
+- `lightpath/rendering.hpp`
+- `lightpath/objects.hpp`
+- `lightpath/factory.hpp`
+- `lightpath/debug.hpp`
 
-### `lightpath::Color`
-
-Simple RGB value type:
-
-- `uint8_t r`
-- `uint8_t g`
-- `uint8_t b`
+## 2) High-Level Engine API
 
 ### `lightpath::ObjectType`
 
@@ -36,109 +34,111 @@ Built-in object selection enum:
 
 ### `lightpath::EngineConfig`
 
-Engine construction config:
+Engine configuration fields:
 
 - `object_type`
-- `pixel_count` (`0` = object default)
+- `pixel_count` (`0` uses object default)
 - `auto_emit`
 
 ### `lightpath::EmitCommand`
 
-Value command for one emit call:
+Value command for one emit request.
 
-- required-ish fields: `model`, `speed`
-- optional controls: `length`, `color`, `duration_ms`, `from`
-- behavior tuning: `trail`, `behaviour_flags`, `emit_groups`, `emit_offset`
-- brightness bounds: `min_brightness`, `max_brightness`
-- list-reuse/linking: `note_id`, `linked`
+Key fields:
 
-### `lightpath::ErrorCode`
+- `model`, `speed`, `length`, `trail`, `color`
+- `note_id`, `min_brightness`, `max_brightness`
+- `behaviour_flags`, `emit_groups`, `emit_offset`
+- `duration_ms`, `from`, `linked`
 
-Typed error codes:
+### `lightpath::ErrorCode`, `lightpath::Status`, `lightpath::Result<T>`
 
-- `Ok`
-- `InvalidArgument`
-- `InvalidModel`
-- `NoFreeLightList`
-- `NoEmitterAvailable`
-- `CapacityExceeded`
-- `OutOfRange`
-- `InternalError`
-
-### `lightpath::Status`
-
-Status object with:
-
-- `ok()`
-- `code()`
-- `message()`
-- static constructors `success()` and `error(...)`
-
-### `lightpath::Result<T>`
-
-Value + status container:
-
-- `ok()`
-- `value()`
-- `status()`
-- static `error(...)`
+Typed error and result model used by `Engine`.
 
 ### `lightpath::Engine`
 
-Thread-safe runtime facade around legacy internals:
+Thread-safe runtime facade:
 
-- lifecycle:
-  - `Engine(const EngineConfig&)`
-- runtime actions:
-  - `Result<int8_t> emit(const EmitCommand&)`
-  - `void update(uint64_t millis)`
-  - `void tick(uint64_t delta_millis)`
-  - `void stopAll()`
-- runtime toggles:
-  - `bool isOn() const`, `void setOn(bool)`
-  - `bool autoEmitEnabled() const`, `void setAutoEmitEnabled(bool)`
-- output:
-  - `uint16_t pixelCount() const`
-  - `Result<Color> pixel(uint16_t index, uint8_t max_brightness = 255) const`
+- `Result<int8_t> emit(const EmitCommand&)`
+- `void update(uint64_t millis)`
+- `void tick(uint64_t delta_millis)`
+- `void stopAll()`
+- `bool isOn() const`, `void setOn(bool)`
+- `bool autoEmitEnabled() const`, `void setAutoEmitEnabled(bool)`
+- `uint16_t pixelCount() const`
+- `Result<Color> pixel(uint16_t index, uint8_t max_brightness = 255) const`
 
-## 2) Legacy Compatibility API
+## 3) Module Headers
 
-For existing MeshLED-style integrations:
+These headers expose broader topology/runtime/rendering integration types used by MeshLED.
 
-```cpp
-#include <lightpath/legacy.hpp>
-```
+### `lightpath/topology.hpp`
 
-Legacy headers under `include/lightpath/legacy/*.hpp` expose topology/runtime/rendering/debug aliases backed by `src/` internals:
+Namespace aliases:
 
-- `legacy/types.hpp`
-- `legacy/topology.hpp`
-- `legacy/runtime.hpp`
-- `legacy/rendering.hpp`
-- `legacy/objects.hpp`
-- `legacy/factory.hpp`
-- `legacy/debug.hpp`
+- `lightpath::Object` (`LPObject`)
+- `lightpath::Intersection`
+- `lightpath::Connection`
+- `lightpath::Model`
+- `lightpath::Owner`
+- `lightpath::Port`, `lightpath::InternalPort`, `lightpath::ExternalPort`
+- `lightpath::Weight`
 
-Notes:
+### `lightpath/runtime.hpp`
 
-- This layer is intentionally compatibility-oriented and broader than the stable API.
-- For installed packages, legacy headers are installed only when
-  `LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS=ON`.
+Namespace aliases:
 
-## 3) Behavior and Invariants
+- `lightpath::EmitParam`
+- `lightpath::EmitParams`
+- `lightpath::Behaviour`
+- `lightpath::RuntimeLight`
+- `lightpath::Light`
+- `lightpath::LightList`
+- `lightpath::BgLight`
+- `lightpath::RuntimeState`
 
-- Stable API never returns raw owning pointers.
+### `lightpath/rendering.hpp`
+
+Namespace aliases/helpers:
+
+- `lightpath::Palette`
+- `lightpath::kWrapNoWrap`
+- `lightpath::kWrapClampToEdge`
+- `lightpath::kWrapRepeat`
+- `lightpath::kWrapRepeatMirror`
+- `lightpath::paletteCount()`
+- `lightpath::paletteAt(index)`
+
+### `lightpath/objects.hpp`
+
+Namespace aliases/constants:
+
+- `lightpath::Heptagon919`, `lightpath::Heptagon3024`, `lightpath::Line`, `lightpath::Cross`, `lightpath::Triangle`
+- model enums for built-ins
+- default pixel-count constants (`kLinePixelCount`, etc.)
+
+### `lightpath/factory.hpp`
+
+- `lightpath::BuiltinObjectType`
+- `lightpath::makeObject(...)`
+
+### `lightpath/debug.hpp`
+
+- `lightpath::Debugger`
+
+## 4) Invariants
+
+- Stable engine API never returns raw owning pointers.
 - `Engine::pixel(...)` returns `ErrorCode::OutOfRange` for invalid indices.
 - `EmitCommand::max_brightness` must be `>= min_brightness` (`InvalidArgument` otherwise).
-- `emit(...)` validates model availability and emitter availability before dispatch.
-- Runtime update and render access are mutex-protected in the stable engine facade.
+- Runtime update and output access in `Engine` are mutex-protected.
 
-## 4) Internal Layout (Non-API)
+## 5) Internal Layout (Non-API)
 
-- `src/topology`: graph representation and traversal
-- `src/runtime`: list/light lifecycle and blending inputs
-- `src/rendering`: palette and color-theory helpers
-- `src/objects`: concrete topologies
-- `src/debug`: debugger utilities
+- `src/topology`
+- `src/runtime`
+- `src/rendering`
+- `src/objects`
+- `src/debug`
 
-These are implementation details and may change independently of the stable API.
+Internal headers under `src/` are implementation details and may change.

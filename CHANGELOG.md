@@ -9,9 +9,13 @@
   - `include/lightpath/engine.hpp`
   - `include/lightpath/types.hpp`
   - `include/lightpath/status.hpp`
-- Moved historical broad API to explicit compatibility layer:
-  - `include/lightpath/legacy.hpp`
-  - `include/lightpath/legacy/*.hpp`
+- Removed `include/lightpath/legacy*` compatibility layer and promoted module headers to top-level:
+  - `include/lightpath/topology.hpp`
+  - `include/lightpath/runtime.hpp`
+  - `include/lightpath/rendering.hpp`
+  - `include/lightpath/objects.hpp`
+  - `include/lightpath/factory.hpp`
+  - `include/lightpath/debug.hpp`
 - Added typed status/result error model (`ErrorCode`, `Status`, `Result<T>`).
 
 ### Refactor
@@ -25,8 +29,6 @@
 ### Build
 
 - Added install/export/package-config support (`lightpathConfig.cmake`).
-- Added install option for compatibility headers:
-  - `LIGHTPATH_CORE_INSTALL_LEGACY_HEADERS`
 - Added CI-friendly `CMakePresets.json` profiles:
   - `default`, `warnings`, `asan`, `ubsan`
 
