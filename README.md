@@ -92,10 +92,9 @@ target_link_libraries(your_target PRIVATE lightpath::lightpath)
 
 ## Compatibility
 
-Legacy includes from `src/` remain available by default to avoid breaking existing
-firmware/simulator integrations. The CMake option
+Legacy includes from `src/` are no longer exported by default. The CMake option
 `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` controls whether `src/` is exported
-as a public include directory.
+as a public include directory for transitional builds.
 
 ## Additional Docs
 

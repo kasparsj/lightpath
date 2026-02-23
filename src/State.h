@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "Config.h"
 #include "EmitParams.h"
 #include "LPObject.h"
@@ -16,20 +18,21 @@ class State {
     uint16_t totalLights = 0;
     uint8_t totalLightLists = 0;
     unsigned long nextEmit = 0;
-    uint16_t *pixelValuesR;
-    uint16_t *pixelValuesG;
-    uint16_t *pixelValuesB;
-    uint8_t *pixelDiv;
+    std::vector<uint16_t> pixelValuesR;
+    std::vector<uint16_t> pixelValuesG;
+    std::vector<uint16_t> pixelValuesB;
+    std::vector<uint8_t> pixelDiv;
     bool autoEnabled = false;
     uint8_t currentPalette = 0;
     bool showIntersections = false;
     bool showConnections = false;
 
-    State(LPObject &obj) : object(obj) {
-        pixelValuesR = new uint16_t[obj.pixelCount]{0};
-        pixelValuesG = new uint16_t[obj.pixelCount]{0};
-        pixelValuesB = new uint16_t[obj.pixelCount]{0};
-        pixelDiv = new uint8_t[obj.pixelCount]{0};
+    State(LPObject &obj)
+        : object(obj),
+          pixelValuesR(obj.pixelCount, 0),
+          pixelValuesG(obj.pixelCount, 0),
+          pixelValuesB(obj.pixelCount, 0),
+          pixelDiv(obj.pixelCount, 0) {
         // there is always lightList[0]
         setupBg(0);
     }
@@ -40,10 +43,6 @@ class State {
           lightLists[i] = NULL;
         }
       }
-      delete[] pixelValuesR;
-      delete[] pixelValuesG;
-      delete[] pixelValuesB;
-      delete[] pixelDiv;
     }
 
     uint8_t randomModel();

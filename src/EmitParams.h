@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <optional>
 #include "Config.h"
 #include "LPRandom.h"
 #include <vector>
@@ -52,7 +53,7 @@ class EmitParams {
     uint8_t fadeSpeed = 0;
     uint8_t fadeThresh = 0;
     uint8_t fadeEase = 0;
-    uint16_t* length = 0;
+    std::optional<uint16_t> length;
     uint16_t trail = 0;
     ListOrder order = LIST_ORDER_SEQUENTIAL;
     ListHead head = LIST_HEAD_FRONT;
@@ -88,12 +89,6 @@ class EmitParams {
     }
     EmitParams() : EmitParams(DEFAULT_MODEL, DEFAULT_SPEED) {
 
-    }
-    
-    ~EmitParams() {
-        if (length != NULL) {
-            delete length;
-        }
     }
     
     ColorRGB getColor(size_t index = 0) const {
@@ -159,12 +154,15 @@ class EmitParams {
     }
 
     uint16_t getLength() const {
-        return length != NULL ? *length : LPRandom::randomLength();
+        return length.has_value() ? *length : LPRandom::randomLength();
     }
     
     void setLength(uint16_t value) {
-        if (length == NULL) length = new uint16_t;
-        *length = value;
+        length = value;
+    }
+
+    void clearLength() {
+        length.reset();
     }
     
     uint16_t getSpeedTrail(float speed, uint16_t length) const {

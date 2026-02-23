@@ -10,7 +10,7 @@ option(LIGHTPATH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings an
 option(
   LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS
   "Expose legacy src include path for downstream compatibility"
-  ON
+  OFF
 )
 
 set(CMAKE_CXX_STANDARD 17)

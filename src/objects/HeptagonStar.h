@@ -2,7 +2,6 @@
 
 #include "../Config.h"
 #include "../LPObject.h"
-#include "../State.h"
 
 enum HeptagonStarModel {
     M_DEFAULT = 0,

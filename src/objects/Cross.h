@@ -2,7 +2,6 @@
 
 #include "../Config.h"
 #include "../LPObject.h"
-#include "../State.h"
 
 #define CROSS_PIXEL_COUNT 288  // 2 lines with 144 pixels each
 

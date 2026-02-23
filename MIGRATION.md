@@ -34,8 +34,8 @@ preserving compatibility with existing `src/` includes.
 
 ## Compatibility / Deprecation Notes
 
-- Legacy `src/` include paths remain exported by default for compatibility.
-- This behavior is controlled by `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS`.
+- Legacy `src/` include paths are now opt-in (disabled by default).
+- Enable `LIGHTPATH_CORE_ENABLE_LEGACY_INCLUDE_PATHS=ON` only for transitional compatibility.
 - No runtime behavior changes are intended in this migration.
 
 ## Parent Migration Notes (MeshLED)

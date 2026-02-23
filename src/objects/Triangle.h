@@ -2,7 +2,6 @@
 
 #include "../Config.h"
 #include "../LPObject.h"
-#include "../State.h"
 
 #define TRIANGLE_PIXEL_COUNT 900
 

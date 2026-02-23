@@ -109,6 +109,10 @@ class LightList {
         reset();
     }
 
+    LightList& operator=(const LightList&) = delete;
+    LightList(LightList&&) = delete;
+    LightList& operator=(LightList&&) = delete;
+
     virtual ~LightList() {
       if (lights != NULL) {
         for (uint16_t i = 0; i < numLights; i++) {

@@ -136,10 +136,10 @@ void State::doEmit(LPOwner* from, LightList *lightList, EmitParams& params) {
 }
 
 void State::update() {
-  memset(pixelValuesR, 0, sizeof(uint16_t) * object.pixelCount);
-  memset(pixelValuesG, 0, sizeof(uint16_t) * object.pixelCount);
-  memset(pixelValuesB, 0, sizeof(uint16_t) * object.pixelCount);
-  memset(pixelDiv, 0, object.pixelCount);
+  std::fill(pixelValuesR.begin(), pixelValuesR.end(), 0);
+  std::fill(pixelValuesG.begin(), pixelValuesG.end(), 0);
+  std::fill(pixelValuesB.begin(), pixelValuesB.end(), 0);
+  std::fill(pixelDiv.begin(), pixelDiv.end(), 0);
   for (uint8_t i=0; i<MAX_LIGHT_LISTS; i++) {
     LightList* lightList = lightLists[i];
     if (lightList == NULL) continue;
