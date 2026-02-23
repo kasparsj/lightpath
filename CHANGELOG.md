@@ -25,6 +25,7 @@
 - Refactored `src/State.h`/`src/State.cpp` pixel accumulation buffers to RAII vectors.
 - Reduced unnecessary coupling in object headers by removing direct `State.h` includes.
 - Made `LightList` copy/move assignment explicitly deleted to avoid accidental unsafe ownership operations.
+- Reorganized `src/` into module folders (`topology`, `runtime`, `rendering`, `debug`) aligned with public API headers.
 - Refactored `Intersection` port storage to RAII vector-backed slots.
 - Fixed connection teardown lifecycle by detaching ports from endpoint intersections in `Port::~Port`.
 - Hardened debugger initialization against null/removed ports in edited topologies.

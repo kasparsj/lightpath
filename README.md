@@ -90,6 +90,18 @@ target_link_libraries(your_target PRIVATE lightpath::lightpath)
 - `lightpath/factory.hpp`
 - `lightpath/debug.hpp`
 
+## Source Layout
+
+`src/` is now organized by module to mirror the public API:
+
+- `src/topology/` graph and routing primitives (`LPObject`, `Intersection`, `Connection`, `Model`, `Port`)
+- `src/runtime/` animation/state machinery (`State`, `LightList`, `LPLight`, `EmitParams`, `Behaviour`)
+- `src/rendering/` palette and blend support (`Palette`, built-in palettes)
+- `src/debug/` debugger helpers (`LPDebugger`)
+- `src/objects/` built-in topology definitions
+
+Flat headers at `src/*.h` are lightweight forwarding headers for transitional compatibility.
+
 ## Compatibility
 
 Legacy includes from `src/` are no longer exported by default. The CMake option

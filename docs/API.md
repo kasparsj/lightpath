@@ -135,3 +135,4 @@ Provides inspection helpers for intersections, connections, and weighted model c
 - Public aliases intentionally map to existing types to preserve behavior.
 - Pointer-based `EmitParams*` command lookup signatures are no longer supported.
 - `Intersection::ports` is no longer a raw array pointer and should not be deleted manually.
+- Internal source modules now live under `src/topology`, `src/runtime`, `src/rendering`, and `src/debug` (with forwarding headers at `src/*.h`).

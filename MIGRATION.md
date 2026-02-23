@@ -23,6 +23,8 @@ manual heap ownership.
 7. Topology editing API updates:
    - `LPObject` now exposes `removeConnection(uint8_t groupIndex, size_t index)` and `removeConnection(Connection*)`.
    - `Intersection::ports` is now `std::vector<Port*>` (no manual array allocation/deallocation).
+8. `src/` was reorganized to mirror public API modules:
+   - `src/topology/`, `src/runtime/`, `src/rendering/`, `src/debug/`, plus existing `src/objects/`.
 
 ## Why
 
@@ -76,6 +78,8 @@ object->conn[group].erase(object->conn[group].begin() + index);
 // After
 object->removeConnection(group, index);
 ```
+7. If you include private/internal headers directly, prefer module paths under `src/`:
+   - `src/topology/...`, `src/runtime/...`, `src/rendering/...`, `src/debug/...`
 
 ## Compatibility / Deprecation Notes
 
@@ -84,6 +88,7 @@ object->removeConnection(group, index);
 - No runtime behavior changes are intended in this migration.
 - There is no pointer-based compatibility shim for `getParams`/`getModelParams`; callers and overrides must migrate to value semantics.
 - Port-slot lifetime is now managed automatically during connection teardown; manual `Intersection` port cleanup is no longer needed.
+- Transitional forwarding headers remain at `src/*.h` for now, but module paths are the canonical internal layout.
 
 ## Parent Migration Notes (MeshLED)
 
