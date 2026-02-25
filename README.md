@@ -4,11 +4,9 @@
 
 Lightgraph is a graph-native lighting engine for installations that are not just straight LED strips.
 
-It treats a lighting piece as a connected structure and lets light move through that structure as if it were a spatial system. You can think in terms of flow, branching, and movement across a sculpture, facade, or 3D object, instead of programming each strip as an isolated line.
+It treats a lighting piece as a connected structure and lets light move through that structure as if it were a spatial system. You can think in terms of flow, branching, and movement across a sculpture, facade, or 3D object, instead of programming each strip as isolated lines.
 
-It solves a common problem in advanced LED work: once a project has intersections, loops, branches, and non-linear geometry, traditional strip-first tooling becomes hard to manage. Lightgraph gives you a single abstraction for those layouts.
-
-Unlike traditional strip-first LED libraries and controllers, the primary model here is not a set of channels, but a connected light network. What makes that conceptually interesting is that physical form is no longer separate from animation logic: the shape of the installation directly influences how light behaves.
+It solves a common problem in advanced LED work: once a project has intersections, loops, branches, and non-linear geometry, traditional strip-first tooling becomes hard to manage. Lightgraph gives you one abstraction for those layouts.
 
 ## Core Concept
 
@@ -19,49 +17,44 @@ The core idea is simple:
 - LED segments between intersections are edges.
 - Light events travel through this graph over time.
 
-This means animation is no longer limited to left-to-right strip playback. Instead, motion can route through arbitrary topology, making the installation itself part of the composition logic.
-
-Conceptually, Lightgraph is interesting because the physical structure is not just where pixels live, it becomes part of how behavior is generated.
+This means animation is not limited to left-to-right strip playback. Motion can route through arbitrary topology, making the installation itself part of the composition logic.
 
 ### Topology Building Blocks
 
 - `Intersection`: a junction where light arrives and a next direction is chosen.
 - `Connection`: a path segment between two intersections, mapped to a run of LEDs.
 - `Bridge`: a convenience way to create a simple path between two pixel endpoints (it creates the endpoints and links them).
-- `Model` (with `Weight`s): a routing profile that defines how likely each outgoing path is at a junction, so you can shape flow behavior instead of hard-coding one route.
+- `Model` (with `Weight`s): a routing profile that defines how likely each outgoing path is at a junction.
 
 ## Why It's Different
 
-Most traditional LED strip workflows are optimized for linear channels and fixture maps. They are excellent for many practical systems, but the mental model is still largely strip-based.
+Most traditional LED strip workflows are optimized for linear channels and fixture maps. They are effective for many systems, but the mental model is still strip-first.
 
-Lightgraph is topology-based.
+Lightgraph is topology-first:
 
-- In strip-first systems, geometry is often something you work around.
-- In Lightgraph, geometry is the primary input.
-- In strip-first systems, complex routing often means custom glue code.
-- In Lightgraph, routing through branches and intersections is built into the model.
-
-So instead of coordinating many strips manually, you program one connected light space.
+- Geometry is a primary input.
+- Routing through branches and intersections is built into the model.
+- Complex structures can be programmed as one connected light space.
 
 ## Example Use Cases
 
-- LED sculpture: route light through branching metal or acrylic structures where direction and junction behavior matter.
-- 3D installations: drive volumetric pieces where motion should move through depth, not just across a flat map.
-- Architectural lighting: treat corridors, columns, and facade segments as a connected lighting network.
-- Generative light art: build systems where the topology itself influences emergent visual behavior.
+- LED sculpture: route light through branching physical structures.
+- 3D installations: drive volumetric pieces where movement should travel in depth.
+- Architectural lighting: treat corridors, columns, and facade segments as a connected network.
+- Generative light art: let topology influence emergent behavior.
 
-## How It Works (High Level)
+## Quick Start (2 Minutes)
 
-At a high level, Lightgraph does four things:
+```bash
+git submodule update --init --recursive
+cmake -S . -B build -DLIGHTGRAPH_CORE_BUILD_EXAMPLES=ON -DLIGHTGRAPH_CORE_BUILD_TESTS=OFF
+cmake --build build --target lightgraph_core_minimal_example --parallel
+./build/lightgraph_core_minimal_example
+```
 
-1. Defines a connected lighting topology.
-2. Accepts light events (speed, color, length, behavior).
-3. Advances those events through the topology over time.
-4. Produces per-pixel RGB output for your host runtime.
+If the example exits with code `0`, the engine emitted valid non-black pixel output.
 
-The engine is host-agnostic, so it can sit behind firmware, desktop tools, simulators, or custom control software.
-
-## Quickstart (Stable API)
+### Minimal API Example
 
 ```cpp
 #include <lightgraph/lightgraph.hpp>
@@ -79,20 +72,12 @@ int main() {
     emit.speed = 1.0f;
     emit.color = 0x33CC99;
 
-    const auto emitted = engine.emit(emit);
-    if (!emitted) {
+    if (!engine.emit(emit)) {
         return 1;
     }
 
     engine.tick(16);
-
-    const auto p0 = engine.pixel(0);
-    if (!p0) {
-        return 1;
-    }
-
-    const lightgraph::Color color = p0.value();
-    return (color.r || color.g || color.b) ? 0 : 1;
+    return engine.pixel(0) ? 0 : 1;
 }
 ```
 
@@ -101,226 +86,39 @@ For source-level topology/runtime integration, see `examples/integration_host_lo
 
 ## Built-in Topology Objects
 
-The codebase currently defines these topology objects:
+Currently defined objects:
 
-- `Heptagon919`: 919-pixel heptagon/star layout with multiple routing models.
-- `Heptagon3024`: 3024-pixel heptagon/star layout with explicit gap mapping for non-LED spans.
-- `Line`: a single-loop line topology with default and bounce routing models.
-- `Cross`: intersecting horizontal/vertical paths with directional model variants.
-- `Triangle`: three-sided topology with clockwise/counter-clockwise behavior models.
-- `HeptagonStar`: shared base topology used by the `Heptagon919` and `Heptagon3024` specializations (source-integration layer).
+- `Heptagon919`
+- `Heptagon3024`
+- `Line`
+- `Cross`
+- `Triangle`
+- `HeptagonStar` (shared integration-layer base used by the heptagon variants)
 
-For the stable high-level `lightgraph::Engine` API, currently supported `ObjectType` values are:
-`Heptagon919`, `Heptagon3024`, `Line`, `Cross`, and `Triangle`.
+Stable `lightgraph::Engine` `ObjectType` values:
+`Heptagon919`, `Heptagon3024`, `Line`, `Cross`, `Triangle`.
 
 ## Defining New Topologies
 
-To add a new object topology:
+Fast path:
 
-1. Create `src/objects/<YourObject>.h` and `.cpp` with a class that inherits `TopologyObject`.
-2. In the constructor, pass `pixelCount` to `TopologyObject(pixelCount)` and call `setup()`.
-3. In `setup()`, define structure with `addIntersection(...)`, `addConnection(...)`, and optional `addBridge(...)`.
-4. Add routing behavior with one or more `Model` instances and set per-path `Weight`s via `model->put(...)`.
-5. Optionally override helpers like `getModelParams(...)`, `getParams(...)`, and mirror behavior methods.
-6. Expose the object through integration/stable APIs (as needed). For integration, update
-   `include/lightgraph/integration/objects.hpp` and `include/lightgraph/integration/factory.hpp`.
-   For stable engine support, update `include/lightgraph/types.hpp` (`ObjectType`) and
-   `src/api/Engine.cpp` (object factory switch).
+1. Create `src/objects/<YourObject>.h` and `.cpp` inheriting `TopologyObject`.
+2. In `setup()`, define graph structure with `addIntersection(...)`, `addConnection(...)`, and optional `addBridge(...)`.
+3. Add one or more `Model`s and tune routing with `model->put(...)` weights.
+4. Optionally override `getModelParams(...)`, `getParams(...)`, and mirror helpers.
+5. Expose through integration and/or stable API surface.
 
-Minimal scaffold:
+Full authoring guide and scaffold:
+- `docs/TOPOLOGY_AUTHORING.md`
 
-```cpp
-class MyObject : public TopologyObject {
-  public:
-    explicit MyObject(uint16_t pixelCount) : TopologyObject(pixelCount) { setup(); }
+## Where To Go Next
 
-    EmitParams getModelParams(int model) const override {
-        return EmitParams(model, Random::randomSpeed());
-    }
-
-  private:
-    void setup() {
-        Model::maxWeights = 2;
-        Model* base = addModel(new Model(0, 10, GROUP1));
-
-        Connection* bridge = addBridge(pixelCount - 1, 0, GROUP1);
-        Connection* segment =
-            addConnection(new Connection(bridge->to, bridge->from, GROUP1, pixelCount - 3));
-
-        base->put(bridge, 0);
-        base->put(segment, 10);
-    }
-};
-```
-
----
-
-## Technical Reference
-
-### API Layout
-
-Lightgraph provides two header tiers:
-
-- Stable installable API:
-  - `lightgraph/lightgraph.hpp`
-  - `lightgraph/engine.hpp`
-  - `lightgraph/types.hpp`
-  - `lightgraph/status.hpp`
-  - `lightgraph/version.hpp`
-- Source-integration module headers (for in-repo integrations like [MeshLED](https://github.com/kasparsj/meshled)):
-  - `lightgraph/integration.hpp`
-  - `lightgraph/integration/topology.hpp`
-  - `lightgraph/integration/runtime.hpp`
-  - `lightgraph/integration/rendering.hpp`
-  - `lightgraph/integration/objects.hpp`
-  - `lightgraph/integration/factory.hpp`
-  - `lightgraph/integration/debug.hpp`
-
-The stable install/export package installs only the stable API headers.
-Source-integration headers are build-tree only and are intentionally exposed
-through a separate CMake target: `lightgraph::integration`.
-
-### Build and Test
-
-```bash
-git submodule update --init --recursive
-cmake -S . -B build -DLIGHTGRAPH_CORE_BUILD_TESTS=ON -DLIGHTGRAPH_CORE_BUILD_EXAMPLES=ON
-cmake --build build --parallel
-ctest --test-dir build --output-on-failure
-```
-
-### CI Presets
-
-`CMakePresets.json` includes CI-friendly profiles:
-
-- `default`: normal build + tests + example
-- `warnings`: warnings as errors
-- `asan`: AddressSanitizer
-- `ubsan`: UndefinedBehaviorSanitizer
-- `static-analysis`: compile commands + benchmark target for analysis tooling
-- `docs`: Doxygen docs target
-- `coverage`: gcov/llvm-cov instrumentation profile for report generation
-
-```bash
-cmake --preset default
-cmake --build --preset default
-ctest --preset default
-```
-
-### Static Analysis
-
-Lightweight static analysis helpers are included:
-
-```bash
-./scripts/check-clang-format.sh
-cmake -S . -B build/static-analysis -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DLIGHTGRAPH_CORE_BUILD_TESTS=OFF -DLIGHTGRAPH_CORE_BUILD_EXAMPLES=OFF -DLIGHTGRAPH_CORE_BUILD_BENCHMARKS=ON
-./scripts/run-clang-tidy.sh build/static-analysis
-./scripts/check-benchmark.sh build/static-analysis/lightgraph_core_benchmark
-```
-
-### Coverage Reporting
-
-```bash
-cmake --preset coverage
-cmake --build --preset coverage --parallel
-ctest --preset coverage
-./scripts/generate-coverage.sh build/preset-coverage
-```
-
-### CMake Integration
-
-#### `add_subdirectory`
-
-```cmake
-add_subdirectory(external/lightgraph)
-target_link_libraries(your_target PRIVATE lightgraph::lightgraph)
-```
-
-#### `add_subdirectory` (source integration layer)
-
-```cmake
-add_subdirectory(external/lightgraph)
-target_link_libraries(your_target PRIVATE lightgraph::integration)
-```
-
-Use `lightgraph::integration` only for source-tree integrations that need
-topology/runtime internals (`lightgraph/integration*.hpp`).
-
-#### Install + `find_package`
-
-Install:
-
-```bash
-cmake -S . -B build -DLIGHTGRAPH_CORE_BUILD_TESTS=OFF
-cmake --build build --parallel
-cmake --install build --prefix /path/to/install
-```
-
-Consume:
-
-```cmake
-find_package(lightgraph CONFIG REQUIRED)
-target_link_libraries(your_target PRIVATE lightgraph::lightgraph)
-```
-
-### Build Options
-
-- `LIGHTGRAPH_CORE_BUILD_TESTS` (default: `ON`)
-- `LIGHTGRAPH_CORE_BUILD_EXAMPLES` (default: `ON`)
-- `LIGHTGRAPH_CORE_BUILD_BENCHMARKS` (default: `OFF`)
-- `LIGHTGRAPH_CORE_BUILD_DOCS` (default: `OFF`)
-- `LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS` (default: `OFF`)
-- `LIGHTGRAPH_CORE_ENABLE_ASAN` (default: `OFF`)
-- `LIGHTGRAPH_CORE_ENABLE_UBSAN` (default: `OFF`)
-- `LIGHTGRAPH_CORE_ENABLE_COVERAGE` (default: `OFF`)
-- `LIGHTGRAPH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` (default: `OFF`)
-
-### Benchmarks
-
-Micro-benchmark target:
-
-```bash
-cmake -S . -B build-bench -DLIGHTGRAPH_CORE_BUILD_BENCHMARKS=ON -DLIGHTGRAPH_CORE_BUILD_TESTS=OFF -DLIGHTGRAPH_CORE_BUILD_EXAMPLES=OFF
-cmake --build build-bench --parallel
-./build-bench/lightgraph_core_benchmark
-```
-
-### Package Distribution
-
-In addition to CMake install/export:
-
-- Conan recipe: `conanfile.py`
-- vcpkg overlay templates: `packaging/vcpkg/`
-
-### Source Layout
-
-- `include/lightgraph/` stable facade + source-integration module headers
-- `src/topology/` graph objects and routing
-- `src/runtime/` state update and animation
-- `src/rendering/` palette/blend implementation
-- `src/objects/` built-in topology definitions
-- `src/debug/` debug helpers
-- `src/core/` shared constants/types/platform macros
-
-### Docs
-
+- Build and integration details: `docs/BUILD_AND_INTEGRATION.md`
+- Development workflows (CI, analysis, coverage, benchmarks): `docs/DEVELOPMENT_WORKFLOWS.md`
+- Topology authoring guide: `docs/TOPOLOGY_AUTHORING.md`
 - API reference: `docs/API.md`
 - API compatibility policy: `docs/API_POLICY.md`
 - Packaging guide: `docs/PACKAGING.md`
 - Release process: `docs/RELEASE.md`
 - Migration notes: `MIGRATION.md`
 - Changelog: `CHANGELOG.md`
-
-#### Generated API Reference (GitHub Pages)
-
-The repository publishes Doxygen API docs to GitHub Pages through GitHub Actions.
-
-Local generation:
-
-```bash
-doxygen Doxyfile
-```
-
-Generated HTML output:
-
-- `build/docs/html/index.html`
