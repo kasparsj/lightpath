@@ -109,16 +109,16 @@ Fast path:
 5. Expose through integration and/or stable API surface.
 
 Full authoring guide and scaffold:
-- `docs/TOPOLOGY_AUTHORING.md`
+- [docs/TOPOLOGY_AUTHORING.md](docs/TOPOLOGY_AUTHORING.md)
 
 ## Where To Go Next
 
-- Build and integration details: `docs/BUILD_AND_INTEGRATION.md`
-- Development workflows (CI, analysis, coverage, benchmarks): `docs/DEVELOPMENT_WORKFLOWS.md`
-- Topology authoring guide: `docs/TOPOLOGY_AUTHORING.md`
-- API reference: `docs/API.md`
-- API compatibility policy: `docs/API_POLICY.md`
-- Packaging guide: `docs/PACKAGING.md`
-- Release process: `docs/RELEASE.md`
-- Migration notes: `MIGRATION.md`
-- Changelog: `CHANGELOG.md`
+- Build and integration details: [docs/BUILD_AND_INTEGRATION.md](docs/BUILD_AND_INTEGRATION.md)
+- Development workflows (CI, analysis, coverage, benchmarks): [docs/DEVELOPMENT_WORKFLOWS.md](docs/DEVELOPMENT_WORKFLOWS.md)
+- Topology authoring guide: [docs/TOPOLOGY_AUTHORING.md](docs/TOPOLOGY_AUTHORING.md)
+- API reference: [docs/API.md](docs/API.md)
+- API compatibility policy: [docs/API_POLICY.md](docs/API_POLICY.md)
+- Packaging guide: [docs/PACKAGING.md](docs/PACKAGING.md)
+- Release process: [docs/RELEASE.md](docs/RELEASE.md)
+- Migration notes: [MIGRATION.md](MIGRATION.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
