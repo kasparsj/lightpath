@@ -11,7 +11,9 @@ int fail(const std::string& message) {
     return 1;
 }
 
-bool isNonBlack(const lightgraph::Color& color) { return color.r > 0 || color.g > 0 || color.b > 0; }
+bool isNonBlack(const lightgraph::Color& color) {
+    return color.r > 0 || color.g > 0 || color.b > 0;
+}
 
 } // namespace
 

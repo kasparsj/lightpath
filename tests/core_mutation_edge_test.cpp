@@ -27,7 +27,8 @@ uint8_t countConnectedPorts(const Intersection& intersection) {
     return used;
 }
 
-bool areIntersectionsConnected(const TopologyObject& object, const Intersection* first, const Intersection* second) {
+bool areIntersectionsConnected(const TopologyObject& object, const Intersection* first,
+                               const Intersection* second) {
     for (uint8_t groupIndex = 0; groupIndex < MAX_GROUPS; ++groupIndex) {
         for (Connection* connection : object.conn[groupIndex]) {
             if (connection == nullptr) {
@@ -42,7 +43,8 @@ bool areIntersectionsConnected(const TopologyObject& object, const Intersection*
     return false;
 }
 
-bool hasIntersectionBetween(const TopologyObject& object, const Intersection* left, const Intersection* right) {
+bool hasIntersectionBetween(const TopologyObject& object, const Intersection* left,
+                            const Intersection* right) {
     if (left == nullptr || right == nullptr) {
         return false;
     }
@@ -211,13 +213,15 @@ int main() {
     Intersection* junctionB = object.addIntersection(new Intersection(2, 50, -1, GROUP1));
     object.addConnection(new Connection(junctionA, junctionB, GROUP1, 0));
     if (!object.removeIntersection(junctionA)) {
-        return fail("removeIntersection(pointer) failed when intersection had attached connections");
+        return fail(
+            "removeIntersection(pointer) failed when intersection had attached connections");
     }
     if (!object.conn[0].empty()) {
         return fail("removeIntersection(pointer) should remove attached connections");
     }
     if (countConnectedPorts(*junctionB) != 0) {
-        return fail("Neighbor intersection ports were not detached when removing attached intersection");
+        return fail(
+            "Neighbor intersection ports were not detached when removing attached intersection");
     }
 
     // Firmware-style recalculate should split and reconnect around inserted/removed intersections.
@@ -239,7 +243,8 @@ int main() {
         return fail("Inserted intersection should connect to both neighbors after recalc");
     }
     if (areIntersectionsConnected(editorObject, a, b)) {
-        return fail("Original direct connection should be removed when intersection exists between endpoints");
+        return fail("Original direct connection should be removed when intersection exists between "
+                    "endpoints");
     }
 
     if (!editorObject.removeIntersection(inserted)) {
@@ -256,8 +261,8 @@ int main() {
     Intersection* s2 = snapshotObject.addIntersection(new Intersection(2, 7, -1, GROUP1));
     Connection* sConnection = snapshotObject.addConnection(new Connection(s1, s2, GROUP1, 5));
     snapshotObject.addGap(3, 4);
-    Model* deterministicModel = snapshotObject.addModel(
-        new Model(1, 7, GROUP1, 32, RoutingStrategy::Deterministic));
+    Model* deterministicModel =
+        snapshotObject.addModel(new Model(1, 7, GROUP1, 32, RoutingStrategy::Deterministic));
     deterministicModel->put(sConnection->fromPort, sConnection->toPort, 99);
 
     const TopologySnapshot snapshot = snapshotObject.exportSnapshot();
@@ -272,7 +277,8 @@ int main() {
     if (importedObject.countConnections(GROUP1) != snapshotObject.countConnections(GROUP1)) {
         return fail("importSnapshot did not preserve connection count");
     }
-    if (importedObject.gaps.size() != 1 || importedObject.gaps[0].fromPixel != 3 || importedObject.gaps[0].toPixel != 4) {
+    if (importedObject.gaps.size() != 1 || importedObject.gaps[0].fromPixel != 3 ||
+        importedObject.gaps[0].toPixel != 4) {
         return fail("importSnapshot did not preserve gap definitions");
     }
     Model* importedModel = importedObject.getModel(1);

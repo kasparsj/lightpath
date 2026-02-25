@@ -50,10 +50,9 @@ double runScenario(const BenchmarkScenario& scenario) {
 
     const auto elapsed_ms =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    const double fps = elapsed_ms > 0
-                           ? static_cast<double>(scenario.frames) /
-                                 (static_cast<double>(elapsed_ms) / 1000.0)
-                           : 0.0;
+    const double fps = elapsed_ms > 0 ? static_cast<double>(scenario.frames) /
+                                            (static_cast<double>(elapsed_ms) / 1000.0)
+                                      : 0.0;
 
     std::cout << "Benchmark scenario: " << scenario.name << "\n";
     std::cout << "Benchmark frames: " << scenario.frames << "\n";
@@ -70,8 +69,10 @@ double runScenario(const BenchmarkScenario& scenario) {
 int main() {
     const std::array<BenchmarkScenario, 3> scenarios = {
         BenchmarkScenario{"line-180-single-emit", lightgraph::ObjectType::Line, 180, 5000, 1},
-        BenchmarkScenario{"triangle-512-double-emit", lightgraph::ObjectType::Triangle, 512, 3500, 2},
-        BenchmarkScenario{"heptagon919-single-emit", lightgraph::ObjectType::Heptagon919, 0, 2500, 1},
+        BenchmarkScenario{"triangle-512-double-emit", lightgraph::ObjectType::Triangle, 512, 3500,
+                          2},
+        BenchmarkScenario{"heptagon919-single-emit", lightgraph::ObjectType::Heptagon919, 0, 2500,
+                          1},
     };
 
     double min_fps = std::numeric_limits<double>::max();
