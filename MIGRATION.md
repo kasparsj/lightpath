@@ -68,7 +68,7 @@ Updated in the same change set:
    - `lightgraph/legacy.hpp` -> `lightgraph/integration.hpp`
 3. `/Users/kasparsj/Work2/meshled/firmware/esp/WebServerLayers.h`
    - `lightgraph/legacy/rendering.hpp` -> `lightgraph/integration/rendering.hpp`
-4. `/Users/kasparsj/Work2/meshled/firmware/esp/homo_deus.ino`
+4. `/Users/kasparsj/Work2/meshled/firmware/esp/esp.ino`
    - `lightgraph/legacy/debug.hpp` -> `lightgraph/integration/debug.hpp`
 
 ## Notes

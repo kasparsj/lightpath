@@ -129,7 +129,7 @@ Outputs
 - `ofApp::update()` -> OSC polling -> `State::autoEmit()` -> `State::update()`.
 - `ofApp::draw()` visualizes topology/pixels.
 - Firmware integration entrypoint:
-- `homo_deus.ino` setup/loop calls `setupState()`, `updateLEDs()`, `drawLEDs()`.
+- `esp.ino` setup/loop calls `setupState()`, `updateLEDs()`, `drawLEDs()`.
 - Core runtime reused identically with Arduino timing/logging macros.
 
 ### Current build verification from this audit

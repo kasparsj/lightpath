@@ -2,7 +2,7 @@
 
 #include "Palette.h"
 
-// Predefined color palettes for use with HomoDeus LED system
+// Predefined color palettes for use with MeshLED LED system
 // These palettes were originally derived from FastLED's cpt-city palettes
 // but have been converted to use our Palette class
 
