@@ -1,6 +1,7 @@
 #include "State.h"
 
 #include <cmath>
+#include <limits>
 
 #include "../core/Platform.h"
 #include "../topology/TopologyObject.h"
@@ -16,6 +17,20 @@
 #endif
 
 EmitParams State::autoParams(EmitParams::DEFAULT_MODEL, RANDOM_SPEED);
+
+namespace {
+
+uint8_t clampReservedTailSlots(uint8_t slots) {
+    if (MAX_LIGHT_LISTS <= 1) {
+        return 0;
+    }
+    if (slots >= MAX_LIGHT_LISTS) {
+        return static_cast<uint8_t>(MAX_LIGHT_LISTS - 1);
+    }
+    return slots;
+}
+
+} // namespace
 
 State::State(TopologyObject& obj)
     : object(obj),
@@ -81,10 +96,7 @@ int8_t State::getOrCreateList(EmitParams &params) {
             return setupListFrom(listIndex, params);
         }
     }
-    const uint8_t slotsToReserve = (reservedTailSlots >= MAX_LIGHT_LISTS)
-                                       ? static_cast<uint8_t>(MAX_LIGHT_LISTS - 1)
-                                       : reservedTailSlots;
-    const uint8_t localSlotsEndExclusive = static_cast<uint8_t>(MAX_LIGHT_LISTS - slotsToReserve);
+    const uint8_t localSlotsEndExclusive = getLocalSlotEndExclusive();
     for (uint8_t i = 0; i < localSlotsEndExclusive; i++) {
         if (lightLists[i] == NULL) {
             return setupListFrom(i, params);
@@ -92,7 +104,7 @@ int8_t State::getOrCreateList(EmitParams &params) {
     }
     LP_LOGF("emit failed: no free local light lists (%d, reserved tail=%d)\n",
             localSlotsEndExclusive,
-            slotsToReserve);
+            clampReservedTailSlots(reservedTailSlots));
     return -1;
 }
 
@@ -178,19 +190,13 @@ void State::update() {
     bool allExpired = lightList->update();
     if (allExpired) {
       // Keep slot 0 allocated for background, but make it non-visible once expired.
-      if (i == 0) {
-          lightList->visible = false;
-          continue;
-      }
-
-      totalLights -= lightList->numLights;
-      if (totalLightLists > 0) {
-          totalLightLists--;
-      }
-      delete lightLists[i];
-      lightLists[i] = NULL;
-    }
-    else if (lightList->visible) {
+          if (i == 0) {
+              lightList->visible = false;
+              continue;
+          }
+          clearListSlot(i);
+        }
+        else if (lightList->visible) {
       // Check if the lightList is a BgLight
       if (lightList->editable && lightList->numLights == 0) {
         for (uint16_t p = 0; p < object.pixelCount; p++) {
@@ -422,16 +428,87 @@ void State::setupBg(uint8_t i) {
 }
 
 void State::setReservedTailSlots(uint8_t slots) {
-    // Keep at least one local slot available (slot 0 background semantics).
-    if (slots >= MAX_LIGHT_LISTS) {
-        reservedTailSlots = static_cast<uint8_t>(MAX_LIGHT_LISTS - 1);
-        return;
-    }
-    reservedTailSlots = slots;
+    reservedTailSlots = clampReservedTailSlots(slots);
 }
 
 uint8_t State::getReservedTailSlots() const {
     return reservedTailSlots;
+}
+
+uint8_t State::getLocalSlotEndExclusive() const {
+    const uint8_t slotsToReserve = clampReservedTailSlots(reservedTailSlots);
+    return static_cast<uint8_t>(MAX_LIGHT_LISTS - slotsToReserve);
+}
+
+bool State::clearListSlot(uint8_t slot) {
+    if (slot >= MAX_LIGHT_LISTS) {
+        return false;
+    }
+
+    LightList* existing = lightLists[slot];
+    if (existing == nullptr) {
+        return true;
+    }
+
+    if (slot == 0) {
+        existing->visible = false;
+        return true;
+    }
+
+    if (totalLights >= existing->numLights) {
+        totalLights = static_cast<uint16_t>(totalLights - existing->numLights);
+    } else {
+        totalLights = 0;
+    }
+
+    if (totalLightLists > 0) {
+        totalLightLists--;
+    }
+
+    delete existing;
+    lightLists[slot] = nullptr;
+    return true;
+}
+
+bool State::replaceListSlot(uint8_t slot, LightList* replacement) {
+    if (slot >= MAX_LIGHT_LISTS) {
+        delete replacement;
+        return false;
+    }
+
+    if (slot == 0 && replacement == nullptr) {
+        if (lightLists[0] != nullptr) {
+            lightLists[0]->visible = false;
+        }
+        return true;
+    }
+
+    if (slot == 0 && lightLists[0] != nullptr) {
+        LightList* existing = lightLists[0];
+        if (totalLights >= existing->numLights) {
+            totalLights = static_cast<uint16_t>(totalLights - existing->numLights);
+        } else {
+            totalLights = 0;
+        }
+        if (totalLightLists > 0) {
+            totalLightLists--;
+        }
+        delete existing;
+        lightLists[0] = nullptr;
+    } else if (slot != 0) {
+        clearListSlot(slot);
+    }
+
+    if (replacement == nullptr) {
+        return true;
+    }
+
+    lightLists[slot] = replacement;
+    totalLights = static_cast<uint16_t>(totalLights + replacement->numLights);
+    if (totalLightLists < std::numeric_limits<uint8_t>::max()) {
+        totalLightLists++;
+    }
+    return true;
 }
 
 void State::colorAll() {

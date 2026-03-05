@@ -61,6 +61,9 @@ class State {
     void doEmit(Owner* from, LightList *lightList, uint8_t emitOffset = 0);
     void setReservedTailSlots(uint8_t slots);
     uint8_t getReservedTailSlots() const;
+    uint8_t getLocalSlotEndExclusive() const;
+    bool clearListSlot(uint8_t slot);
+    bool replaceListSlot(uint8_t slot, LightList* replacement);
 
   private:
     void doEmit(Owner* from, LightList *lightList, EmitParams& params);
