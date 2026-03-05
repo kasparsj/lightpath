@@ -56,6 +56,7 @@ set(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Globals.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/Random.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/api/Engine.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/debug/TopologyPixels.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/debug/Debugger.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Cross.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/src/objects/Heptagon3024.cpp"

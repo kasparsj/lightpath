@@ -1,5 +1,6 @@
 #pragma once
 
+#include "debug/TopologyPixels.h"
 #include "debug/Debugger.h"
 
 /**
@@ -9,6 +10,7 @@
 
 namespace lightgraph::integration {
 
+using TopologyPixels = ::TopologyPixels;
 using Debugger = ::Debugger;
 
 } // namespace lightgraph::integration
