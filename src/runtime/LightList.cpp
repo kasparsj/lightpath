@@ -11,7 +11,7 @@
 
 namespace {
 
-constexpr size_t kMsgLightPoolSize = 96;
+constexpr size_t kMsgLightPoolSize = 384;
 constexpr size_t kMsgLightObjectSize =
     (sizeof(Light) > sizeof(RuntimeLight)) ? sizeof(Light) : sizeof(RuntimeLight);
 constexpr size_t kMsgLightObjectAlign =
