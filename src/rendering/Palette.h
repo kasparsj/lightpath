@@ -48,14 +48,16 @@ public:
         
         size_t colorIndex = i;
                 
+        const float normalizedSegmentation = std::isfinite(segmentation) ? segmentation : 0.0f;
+
         // Apply segmentation if enabled
-        if (segmentation > 0.0f && total > 0) {
-            const size_t segmentSize = std::max<size_t>(1, static_cast<size_t>(total / segmentation));
+        if (normalizedSegmentation > 0.0f && total > 0) {
+            const size_t segmentSize = std::max<size_t>(1, static_cast<size_t>(total / normalizedSegmentation));
             float segmentNum;
             const float segmentFrac = std::modf(static_cast<float>(colorIndex) / segmentSize, &segmentNum);
             
             // Check for segment boundary condition - first segment's last color clamp
-            if (wrapMode == WRAP_CLAMP_TO_EDGE && segmentation >= 2.0f && segmentNum >= 1) {
+            if (wrapMode == WRAP_CLAMP_TO_EDGE && normalizedSegmentation >= 2.0f && segmentNum >= 1) {
                 colorIndex = numColors - 1;
             } else if (wrapMode > WRAP_NOWRAP || segmentNum < 1) {
                 colorIndex = segmentFrac * numColors;

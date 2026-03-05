@@ -234,8 +234,12 @@ float Palette::getSegmentation() const {
 }
 
 void Palette::setSegmentation(float seg) {
-    // Ensure value is not negative
-    segmentation = seg < 0.0f ? 0.0f : seg;
+    // Defensive clamp: invalid, NaN, or non-positive values disable segmentation.
+    if (!std::isfinite(seg) || seg <= 0.0f) {
+        segmentation = 0.0f;
+        return;
+    }
+    segmentation = seg;
 }
 
 inline ColorRGB toRGB(int64_t hex) {
