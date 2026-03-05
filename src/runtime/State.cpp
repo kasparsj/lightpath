@@ -240,10 +240,19 @@ ColorRGB State::getPixel(uint16_t i, uint8_t maxBrightness) {
   if (i >= pixelDiv.size()) {
     return color;
   }
-  if (pixelDiv[i]) {
-    color.R = min(pixelValuesR[i] / pixelDiv[i] / 255.f, 1.f) * maxBrightness;
-    color.G = min(pixelValuesG[i] / pixelDiv[i] / 255.f, 1.f) * maxBrightness;
-    color.B = min(pixelValuesB[i] / pixelDiv[i] / 255.f, 1.f) * maxBrightness;
+  const uint8_t div = pixelDiv[i];
+  if (div != 0) {
+    const uint16_t avgR = static_cast<uint16_t>(pixelValuesR[i] / div);
+    const uint16_t avgG = static_cast<uint16_t>(pixelValuesG[i] / div);
+    const uint16_t avgB = static_cast<uint16_t>(pixelValuesB[i] / div);
+
+    const uint16_t clampedR = avgR > 255 ? 255 : avgR;
+    const uint16_t clampedG = avgG > 255 ? 255 : avgG;
+    const uint16_t clampedB = avgB > 255 ? 255 : avgB;
+
+    color.R = static_cast<uint8_t>((clampedR * maxBrightness + 127u) / 255u);
+    color.G = static_cast<uint8_t>((clampedG * maxBrightness + 127u) / 255u);
+    color.B = static_cast<uint8_t>((clampedB * maxBrightness + 127u) / 255u);
   }
   return color;
 }
