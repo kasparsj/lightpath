@@ -81,12 +81,18 @@ int8_t State::getOrCreateList(EmitParams &params) {
             return setupListFrom(listIndex, params);
         }
     }
-    for (uint8_t i=0; i<MAX_LIGHT_LISTS; i++) {
+    const uint8_t slotsToReserve = (reservedTailSlots >= MAX_LIGHT_LISTS)
+                                       ? static_cast<uint8_t>(MAX_LIGHT_LISTS - 1)
+                                       : reservedTailSlots;
+    const uint8_t localSlotsEndExclusive = static_cast<uint8_t>(MAX_LIGHT_LISTS - slotsToReserve);
+    for (uint8_t i = 0; i < localSlotsEndExclusive; i++) {
         if (lightLists[i] == NULL) {
             return setupListFrom(i, params);
         }
     }
-    LP_LOGF("emit failed: no free light lists (%d)\n", MAX_LIGHT_LISTS);
+    LP_LOGF("emit failed: no free local light lists (%d, reserved tail=%d)\n",
+            localSlotsEndExclusive,
+            slotsToReserve);
     return -1;
 }
 
@@ -413,6 +419,19 @@ void State::setupBg(uint8_t i) {
     bgLight->setPalette(Palette({0xFF0000}, {0.0f}));
 
     totalLightLists++;
+}
+
+void State::setReservedTailSlots(uint8_t slots) {
+    // Keep at least one local slot available (slot 0 background semantics).
+    if (slots >= MAX_LIGHT_LISTS) {
+        reservedTailSlots = static_cast<uint8_t>(MAX_LIGHT_LISTS - 1);
+        return;
+    }
+    reservedTailSlots = slots;
+}
+
+uint8_t State::getReservedTailSlots() const {
+    return reservedTailSlots;
 }
 
 void State::colorAll() {

@@ -137,7 +137,7 @@ bool RuntimeLight::shouldExpire() const {
 }
 
 RuntimeLight* RuntimeLight::getPrev() const {
-    if (list == NULL || list->lights == NULL || list->numLights == 0 || idx == 0 || idx > list->numLights) {
+    if (list == NULL || list->lights == NULL || list->numLights == 0 || idx == 0 || idx >= list->numLights) {
       return NULL;
     }
     return (*list)[idx - 1];

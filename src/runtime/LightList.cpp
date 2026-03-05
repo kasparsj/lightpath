@@ -272,6 +272,9 @@ bool LightList::update() {
 
 void LightList::doEmit() {
     if (emitter == NULL) {
+        if (numEmitted >= numLights) {
+            return;
+        }
         LP_LOGF("LightList::doEmit failed: emitter NULL");
         return;
     }

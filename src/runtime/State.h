@@ -32,6 +32,7 @@ class State {
     uint8_t currentPalette = 0;
     bool showIntersections = false;
     bool showConnections = false;
+    uint8_t reservedTailSlots = 0;
 
     explicit State(TopologyObject &obj);
     ~State();
@@ -58,6 +59,8 @@ class State {
     void setOn(bool newState);
     void setupBg(uint8_t i);
     void doEmit(Owner* from, LightList *lightList, uint8_t emitOffset = 0);
+    void setReservedTailSlots(uint8_t slots);
+    uint8_t getReservedTailSlots() const;
 
   private:
     void doEmit(Owner* from, LightList *lightList, EmitParams& params);
