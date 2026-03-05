@@ -330,6 +330,38 @@ int main() {
         }
     }
 
+    // Counter regression: reusing a counted zero-light list must keep list count stable.
+    {
+        Line line(LINE_PIXEL_COUNT);
+        State state(line);
+        state.lightLists[0]->visible = false;
+
+        LightList* const reused = new LightList();
+        reused->noteId = 999;
+        reused->length = 1;
+        reused->model = line.getModel(0);
+        reused->emitter = line.getIntersection(0, GROUP1);
+        if (reused->emitter == nullptr) {
+            delete reused;
+            return fail("Expected line topology to provide a default emitter");
+        }
+        state.lightLists[1] = reused;
+        state.totalLightLists++;
+
+        const uint8_t listCountBeforeReuse = state.totalLightLists;
+        EmitParams params(0, 1.0f, 0x11AAFF);
+        params.setLength(4);
+        params.noteId = 999;
+
+        const int8_t reusedIndex = state.emit(params);
+        if (reusedIndex != 1) {
+            return fail("State should reuse pre-existing zero-light slot for matching noteId");
+        }
+        if (state.totalLightLists != listCountBeforeReuse) {
+            return fail("State::emit should not inflate totalLightLists on zero-light list reuse");
+        }
+    }
+
     // Blend-mode regressions: deterministic 1-pixel compositing across all modes.
     {
         struct BlendExpectation {

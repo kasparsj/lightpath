@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <limits>
+#include <new>
 
 #include "../core/Platform.h"
 #include "../topology/TopologyObject.h"
@@ -112,8 +113,13 @@ int8_t State::setupListFrom(uint8_t i, EmitParams &params) {
     LightList* lightList = lightLists[i];
     uint16_t oldLen = (lightList != NULL ? lightList->length : 0);
     uint16_t oldLights = (lightList != NULL ? lightList->numLights : 0);
+    const bool hadCountedList = (lightList != NULL && lightList->emitter != NULL);
     uint16_t newLen = params.getLength();
-    Behaviour* newBehaviour = new Behaviour(params);
+    Behaviour* newBehaviour = new (std::nothrow) Behaviour(params);
+    if (newBehaviour == NULL) {
+        LP_LOGF("emit failed: OOM creating behaviour for slot %d\n", i);
+        return -1;
+    }
     if (oldLen > 0 && newBehaviour->smoothChanges()) {
         newLen = oldLen + (int) round((float)(newLen - oldLen) * 0.1f);
     }
@@ -124,7 +130,12 @@ int8_t State::setupListFrom(uint8_t i, EmitParams &params) {
         return -1;
     }
     if (lightList == NULL) {
-        lightList = new LightList();
+        lightList = new (std::nothrow) LightList();
+        if (lightList == NULL) {
+            LP_LOGF("emit failed: OOM creating list for slot %d\n", i);
+            delete newBehaviour;
+            return -1;
+        }
         lightLists[i] = lightList;
     }
     lightList->length = newLen;
@@ -132,10 +143,47 @@ int8_t State::setupListFrom(uint8_t i, EmitParams &params) {
         delete lightList->behaviour;
     }
     lightList->behaviour = newBehaviour;
+
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+    bool setupOk = true;
+    try {
+        lightList->setupFrom(params);
+    } catch (const std::bad_alloc&) {
+        setupOk = false;
+        LP_LOGF("emit failed: OOM while setting up list slot %d\n", i);
+    } catch (...) {
+        setupOk = false;
+        LP_LOGF("emit failed: exception while setting up list slot %d\n", i);
+    }
+    if (!setupOk) {
+        delete lightList->behaviour;
+        lightList->behaviour = NULL;
+        delete lightList;
+        lightLists[i] = NULL;
+        if (hadCountedList) {
+            if (totalLights >= oldLights) {
+                totalLights = static_cast<uint16_t>(totalLights - oldLights);
+            } else {
+                totalLights = 0;
+            }
+            if (totalLightLists > 0) {
+                totalLightLists--;
+            }
+        }
+        return -1;
+    }
+#else
     lightList->setupFrom(params);
-    if (oldLights > 0) {
-        totalLights -= oldLights;
-        totalLightLists--;
+#endif
+    if (hadCountedList) {
+        if (totalLights >= oldLights) {
+            totalLights = static_cast<uint16_t>(totalLights - oldLights);
+        } else {
+            totalLights = 0;
+        }
+        if (totalLightLists > 0) {
+            totalLightLists--;
+        }
     }
     return i;
 }

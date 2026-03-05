@@ -86,14 +86,27 @@ void LightList::init(uint16_t numLights) {
     this->numLights = numLights;
     allocatedLights = numLights;
     numEmitted = 0;
-    lights = new RuntimeLight*[numLights]();
+    lights = new (std::nothrow) RuntimeLight*[numLights]();
+    if (numLights > 0 && lights == NULL) {
+        LP_LOGF("LightList::init failed: OOM for %u lights\n", numLights);
+        this->numLights = 0;
+        allocatedLights = 0;
+    }
 }
 
 void LightList::setup(uint16_t numLights, uint8_t maxBri) {
     init(lead + numLights + trail);
     this->maxBri = maxBri;
+    uint16_t createdLights = 0;
     for (uint16_t i=0; i<this->numLights; i++) {
-        createLight(i, maxBri);
+        if (createLight(i, maxBri) == NULL) {
+            LP_LOGF("LightList::setup truncated: OOM at light %u/%u\n", i + 1, this->numLights);
+            break;
+        }
+        createdLights++;
+    }
+    if (createdLights < this->numLights) {
+        this->numLights = createdLights;
     }
 }
 
@@ -110,14 +123,21 @@ float LightList::getBriMult(uint16_t i) {
 }
 
 RuntimeLight* LightList::createLight(uint16_t i, uint8_t brightness) {
+    if (lights == NULL || i >= numLights) {
+        return NULL;
+    }
     float mult = getBriMult(i);
     RuntimeLight *light;
     // todo: fix if statement
     if (behaviour != NULL/* && behaviour->colorChangeGroups > 0*/) {
-        light = new Light(this, speed, lifeMillis, linked ? i : 0, brightness * mult);
+        light = new (std::nothrow) Light(this, speed, lifeMillis, linked ? i : 0, brightness * mult);
     }
     else {
-        light = new RuntimeLight(this, linked ? i : 0, brightness * mult);
+        light = new (std::nothrow) RuntimeLight(this, linked ? i : 0, brightness * mult);
+    }
+    if (light == NULL) {
+        LP_LOGF("LightList::createLight failed: OOM at index %u\n", i);
+        return NULL;
     }
     (*this)[i] = light;
     return light;
