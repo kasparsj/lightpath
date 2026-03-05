@@ -50,9 +50,9 @@ class State {
     void colorAll();
     void splitAll();
     void stopAll();
-    int8_t findList(uint8_t noteId) const;
+    int8_t findList(uint16_t noteId) const;
     LightList* findListById(uint16_t id);
-    void stopNote(uint8_t i);
+    void stopNote(uint16_t noteId);
     ColorRGB getPixel(uint16_t i, uint8_t maxBrightness = FULL_BRIGHTNESS);
     void debug();
     bool isOn();

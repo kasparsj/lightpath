@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "../src/runtime/BgLight.h"
+#include "../src/runtime/Light.h"
 #include "../src/topology/Connection.h"
 #include "../src/core/Types.h"
 #include "../src/core/Limits.h"
@@ -84,6 +85,33 @@ ColorRGB sampleBlendResult(BlendMode mode) {
     overlay->setup(object.pixelCount);
     overlay->setPalette(Palette({0xC83200}, {0.0f}));  // 200,50,0
     overlay->blendMode = mode;
+    overlay->visible = true;
+    state.lightLists[1] = overlay;
+    state.totalLightLists++;
+
+    state.update();
+    return state.getPixel(0);
+}
+
+ColorRGB sampleReplaceOnlyResult() {
+    SinglePixelObject object;
+    State state(object);
+
+    BgLight* const base = dynamic_cast<BgLight*>(state.lightLists[0]);
+    if (base == nullptr) {
+        return ColorRGB(0, 0, 0);
+    }
+
+    base->setup(object.pixelCount);
+    base->setPalette(Palette({0x000000}, {0.0f}));
+    base->visible = false;
+
+    BgLight* const overlay = new BgLight();
+    overlay->model = object.getModel(0);
+    overlay->setDuration(INFINITE_DURATION);
+    overlay->setup(object.pixelCount);
+    overlay->setPalette(Palette({0xC83200}, {0.0f}));  // 200,50,0
+    overlay->blendMode = BLEND_REPLACE;
     overlay->visible = true;
     state.lightLists[1] = overlay;
     state.totalLightLists++;
@@ -230,6 +258,32 @@ int main() {
             return fail("State::stopNote did not clear active lights for the note");
         }
 
+        // Note IDs above 255 should not truncate and collide.
+        EmitParams paramsWideNote(0, 1.0f, 0x00FFFF);
+        paramsWideNote.setLength(4);
+        paramsWideNote.noteId = 300;
+        const int8_t wideIndex = state.emit(paramsWideNote);
+        if (wideIndex < 0) {
+            return fail("State::emit failed for noteId > 255");
+        }
+
+        EmitParams paramsWideNoteAgain(0, 1.0f, 0x00AAFF);
+        paramsWideNoteAgain.setLength(2);
+        paramsWideNoteAgain.noteId = 300;
+        const int8_t wideReused = state.emit(paramsWideNoteAgain);
+        if (wideReused != wideIndex) {
+            return fail("State should reuse list index for noteId > 255");
+        }
+
+        state.stopNote(300);
+        for (int i = 0; i < 8; i++) {
+            gMillis += 250;
+            state.update();
+        }
+        if (state.findList(300) != -1 || state.totalLights != 0) {
+            return fail("State::stopNote should stop active list for noteId > 255");
+        }
+
         EmitParams stopAllParams(0, 1.0f, 0xAA00FF);
         stopAllParams.setLength(4);
         stopAllParams.noteId = 43;
@@ -282,6 +336,32 @@ int main() {
             if (!isApproxColor(actual, expected.r, expected.g, expected.b, 2)) {
                 return fail(std::string(expected.name) + " produced unexpected blended color");
             }
+        }
+
+        const ColorRGB replaceOnly = sampleReplaceOnlyResult();
+        if (!isApproxColor(replaceOnly, 200, 50, 0, 2)) {
+            return fail("BLEND_REPLACE should set color on first write without prior contributors");
+        }
+    }
+
+    // Fade threshold boundary: 255 must not divide by zero and should produce zero brightness.
+    {
+        LightList list;
+        list.fadeThresh = 255;
+        list.minBri = 0;
+        list.maxBri = 200;
+        list.fadeEase = ofxeasing::linear::easeNone;
+
+        RuntimeLight runtimeLight(&list, 0, 200);
+        runtimeLight.bri = 255;
+        if (runtimeLight.getBrightness() != 0) {
+            return fail("RuntimeLight::getBrightness should be zero when fadeThresh is 255");
+        }
+
+        Light light(&list, 1.0f, 0, 0, 200);
+        light.bri = 255;
+        if (light.getBrightness() != 0) {
+            return fail("Light::getBrightness should be zero when fadeThresh is 255");
         }
     }
 

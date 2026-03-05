@@ -12,7 +12,21 @@ Light::Light(LightList *list, float speed, uint32_t lifeMillis, uint16_t idx, ui
 uint8_t Light::getBrightness() const {
   uint16_t value = bri % 511;
   value = (value > 255 ? 511 - value : value);
-  return ((float) (value - list->fadeThresh) / (255.f - list->fadeThresh)) * maxBri;
+  const uint8_t fadeThresh = (list != NULL ? list->fadeThresh : 0);
+  const int16_t fadeRange = 255 - static_cast<int16_t>(fadeThresh);
+  if (fadeRange <= 0) {
+    return 0;
+  }
+  const int16_t aboveThreshold = static_cast<int16_t>(value) - static_cast<int16_t>(fadeThresh);
+  if (aboveThreshold <= 0) {
+    return 0;
+  }
+  const float normalized = static_cast<float>(aboveThreshold) / static_cast<float>(fadeRange);
+  const float scaled = normalized * maxBri;
+  if (scaled >= maxBri) {
+    return maxBri;
+  }
+  return static_cast<uint8_t>(scaled);
 }
 
 ColorRGB Light::getPixelColor() const {

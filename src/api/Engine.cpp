@@ -63,7 +63,7 @@ struct Engine::Impl {
     }
 
     bool hasFreeListSlot(uint16_t note_id) const {
-        if (note_id > 0 && state.findList(static_cast<uint8_t>(note_id)) >= 0) {
+        if (note_id > 0 && state.findList(note_id) >= 0) {
             return true;
         }
         for (uint8_t i = 0; i < MAX_LIGHT_LISTS; ++i) {

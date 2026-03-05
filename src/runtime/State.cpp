@@ -287,9 +287,10 @@ void State::setPixel(uint16_t pixel, ColorRGB &color, const LightList* const lig
         return;
     } else if (mode == BLEND_REPLACE) {
         // Replace any existing color completely
-        pixelValuesR[pixel] = color.R * pixelDiv[pixel];
-        pixelValuesG[pixel] = color.G * pixelDiv[pixel];
-        pixelValuesB[pixel] = color.B * pixelDiv[pixel];
+        pixelValuesR[pixel] = color.R;
+        pixelValuesG[pixel] = color.G;
+        pixelValuesB[pixel] = color.B;
+        pixelDiv[pixel] = 1;
         return;
     } else if (mode == BLEND_ADD) {
         // Direct addition without division later
@@ -552,7 +553,7 @@ void State::setOn(bool newState) {
     }
 }
 
-int8_t State::findList(uint8_t noteId) const {
+int8_t State::findList(uint16_t noteId) const {
     for (uint8_t i=0; i<MAX_LIGHT_LISTS; i++) {
       if (lightLists[i] == NULL) continue;
       if (lightLists[i]->noteId == noteId) {
@@ -571,7 +572,7 @@ LightList* State::findListById(uint16_t id) {
   return nullptr;
 }
 
-void State::stopNote(uint8_t noteId) {
+void State::stopNote(uint16_t noteId) {
     int8_t index = findList(noteId);
     if (index > -1) {
         lightLists[index]->setDuration(0);

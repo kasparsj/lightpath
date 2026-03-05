@@ -14,10 +14,11 @@ namespace lightgraph {
  */
 
 /**
- * @brief Thread-safe engine facade for built-in topologies and runtime state.
+ * @brief Engine facade with internal method-level synchronization.
  *
  * `Engine` wraps the legacy topology/runtime implementation behind value-based
- * commands and typed status/error returns.
+ * commands and typed status/error returns. Calls on the same instance are
+ * serialized, but process-global runtime state is still shared across instances.
  */
 class Engine {
   public:

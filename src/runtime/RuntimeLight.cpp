@@ -43,9 +43,21 @@ void RuntimeLight::update() {
 uint8_t RuntimeLight::getBrightness() const {
     uint16_t value = bri % 511;
     value = (value > 255 ? 511 - value : value);
-    value = (float) (value - list->fadeThresh) / (255 - list->fadeThresh) * 511.f;
-    if (value > 0) {
-        return ofxeasing::map(value, 0, 511, list->minBri, maxBri, list->fadeEase);
+
+    const uint8_t fadeThresh = (list != NULL ? list->fadeThresh : 0);
+    const int16_t fadeRange = 255 - static_cast<int16_t>(fadeThresh);
+    if (fadeRange <= 0) {
+        return 0;
+    }
+
+    const float adjusted = (static_cast<float>(static_cast<int16_t>(value) - static_cast<int16_t>(fadeThresh)) /
+                            static_cast<float>(fadeRange)) * 511.f;
+    if (adjusted > 0.f) {
+        const float clamped = (adjusted > 511.f ? 511.f : adjusted);
+        if (list != NULL) {
+            return ofxeasing::map(clamped, 0, 511, list->minBri, maxBri, list->fadeEase);
+        }
+        return ofxeasing::map(clamped, 0, 511, 0, maxBri, ofxeasing::linear::easeNone);
     }
     return 0;
 }
