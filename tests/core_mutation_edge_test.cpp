@@ -448,7 +448,8 @@ int main() {
             return fail("Failed to create forwarding intersection fixture");
         }
         const uint8_t forwardingMac[6] = {0x31, 0x32, 0x33, 0x34, 0x35, 0x36};
-        ExternalPort forwardingPort(nullptr, forwardingIntersection, true, GROUP1, forwardingMac, 9);
+        ExternalPort forwardingPort(nullptr, forwardingIntersection, true, GROUP1, forwardingMac,
+                                    9);
 
         LightList sequentialList;
         sequentialList.order = LIST_ORDER_SEQUENTIAL;
@@ -479,7 +480,8 @@ int main() {
             return fail("Second light should expire when it reaches external forwarding port");
         }
         if (gExternalSendRecords.size() != 1) {
-            return fail("Sequential forwarding should not emit duplicate batch sends after reindexing");
+            return fail(
+                "Sequential forwarding should not emit duplicate batch sends after reindexing");
         }
     }
 
@@ -511,7 +513,8 @@ int main() {
         nonSequentialPort.sendOut(firstLight, true);
         nonSequentialPort.sendOut(secondLight, true);
         if (!firstLight->isExpired || !secondLight->isExpired) {
-            return fail("Non-sequential forwarding should expire each light as it reaches external port");
+            return fail(
+                "Non-sequential forwarding should expire each light as it reaches external port");
         }
         if (gExternalSendRecords.size() != 2) {
             return fail("Non-sequential forwarding should send each light independently");
@@ -553,7 +556,8 @@ int main() {
             return fail("Failed external forwarding should not expire local light");
         }
         if (light->owner != failureIntersection) {
-            return fail("Failed external forwarding should reattach light to local intersection owner");
+            return fail(
+                "Failed external forwarding should reattach light to local intersection owner");
         }
         if (light->outPort != nullptr) {
             return fail("Failed external forwarding should clear out-port for rerouting");
