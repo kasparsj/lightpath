@@ -134,6 +134,62 @@ ColorRGB sampleReplaceOnlyResult() {
     return state.getPixel(0);
 }
 
+void advanceLightCadence(Light& light, const std::vector<unsigned long>& deltas) {
+    gMillis = 0;
+    lightgraphResetFrameTiming();
+    lightgraphAdvanceFrameTiming(gMillis);
+    for (const unsigned long delta : deltas) {
+        gMillis += delta;
+        lightgraphAdvanceFrameTiming(gMillis);
+        light.nextFrame();
+    }
+}
+
+std::vector<float> captureLightPositions(const LightList& list) {
+    std::vector<float> positions;
+    positions.reserve(list.numLights);
+    for (uint16_t i = 0; i < list.numLights; i++) {
+        RuntimeLight* const light = list[i];
+        positions.push_back(light != nullptr ? light->position : 0.0f);
+    }
+    return positions;
+}
+
+struct StateCadenceSnapshot {
+    uint16_t numEmitted = 0;
+    std::vector<float> positions;
+};
+
+StateCadenceSnapshot runStateCadence(const std::vector<unsigned long>& deltas) {
+    Line line(LINE_PIXEL_COUNT);
+    State state(line);
+    state.lightLists[0]->visible = false;
+
+    EmitParams params(0, 1.0f, 0x00FF00);
+    params.setLength(6);
+    params.linked = false;
+    params.from = 0;
+
+    const int8_t listIndex = state.emit(params);
+    if (listIndex < 0) {
+        return {};
+    }
+
+    LightList* const list = state.lightLists[listIndex];
+    gMillis = 0;
+    lightgraphResetFrameTiming();
+    state.update();
+    for (const unsigned long delta : deltas) {
+        gMillis += delta;
+        state.update();
+    }
+
+    StateCadenceSnapshot snapshot;
+    snapshot.numEmitted = list->numEmitted;
+    snapshot.positions = captureLightPositions(*list);
+    return snapshot;
+}
+
 }  // namespace
 
 int main() {
@@ -399,6 +455,49 @@ int main() {
 #else
         if (!(lightA.position > lightB.position + 0.001f)) {
             return fail("Legacy frame-driven motion should depend on update count");
+        }
+#endif
+    }
+
+    // State updates should preserve staggered sequential emission across coarse frame deltas.
+    {
+        const StateCadenceSnapshot fineCadence = runStateCadence({16, 16, 16, 16});
+        const StateCadenceSnapshot coarseCadence = runStateCadence({64});
+
+        if (fineCadence.positions.empty() || coarseCadence.positions.empty()) {
+            return fail("State cadence test failed to materialize an emitted list");
+        }
+        if (fineCadence.numEmitted != coarseCadence.numEmitted) {
+            return fail("State::update should emit the same number of sequential lights across equivalent elapsed time");
+        }
+        if (fineCadence.positions.size() != coarseCadence.positions.size()) {
+            return fail("State::update cadence comparison should preserve light counts");
+        }
+        for (size_t i = 0; i < fineCadence.positions.size(); i++) {
+            if (std::fabs(fineCadence.positions[i] - coarseCadence.positions[i]) > 0.001f) {
+                return fail("State::update should preserve per-light positions across coarse frame deltas");
+            }
+        }
+    }
+
+    // Fade progression is still update-count dependent; this characterizes the remaining issue.
+    {
+        LightList fadeListA;
+        fadeListA.setFade(5, 0, EASE_NONE);
+        Light fadeLightA(&fadeListA, 0.0f, INFINITE_DURATION, 0, 255);
+        fadeLightA.bri = 0;
+
+        LightList fadeListB;
+        fadeListB.setFade(5, 0, EASE_NONE);
+        Light fadeLightB(&fadeListB, 0.0f, INFINITE_DURATION, 0, 255);
+        fadeLightB.bri = 0;
+
+        advanceLightCadence(fadeLightA, {16, 16, 16, 16, 16, 16, 16, 16, 16, 16});
+        advanceLightCadence(fadeLightB, {32, 32, 32, 32, 32});
+
+#if LIGHTGRAPH_FPS_INDEPENDENT_SPEED
+        if (fadeLightA.bri == fadeLightB.bri || fadeLightA.brightness == fadeLightB.brightness) {
+            return fail("Fade characterization should reproduce the remaining cadence-dependent fade progression");
         }
 #endif
     }
