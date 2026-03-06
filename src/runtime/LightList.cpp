@@ -244,7 +244,7 @@ float LightList::getPosition(RuntimeLight* const light) const {
   if (behaviour != NULL) {
     return behaviour->getPosition(light);
   }
-  return light->position + light->getSpeed();
+  return light->position + lightgraphMotionDistance(light->getSpeed());
 }
 
 void LightList::initPosition(uint16_t i, RuntimeLight* const light) const {

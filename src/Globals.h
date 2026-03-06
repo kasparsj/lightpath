@@ -11,6 +11,14 @@
 #endif
 #endif
 
+#ifndef LIGHTGRAPH_FPS_INDEPENDENT_SPEED
+#define LIGHTGRAPH_FPS_INDEPENDENT_SPEED 1
+#endif
+
+#ifndef LIGHTGRAPH_MAX_SIMULATION_SUBSTEPS
+#define LIGHTGRAPH_MAX_SIMULATION_SUBSTEPS 8
+#endif
+
 extern FastNoise gPerlinNoise;
 extern unsigned long gMillis;
 
@@ -35,3 +43,10 @@ void lightgraphReportAllocationFailure(
     LightgraphAllocationFailureSite site,
     uint16_t detail0 = 0,
     uint16_t detail1 = 0);
+
+void lightgraphAdvanceFrameTiming(unsigned long nowMillis);
+void lightgraphResetFrameTiming();
+uint8_t lightgraphSimulationSubsteps();
+void lightgraphSetSimulationSubstep(uint8_t stepCount);
+float lightgraphConfiguredSpeedPixelsPerSecond(float speed);
+float lightgraphMotionDistance(float speed);

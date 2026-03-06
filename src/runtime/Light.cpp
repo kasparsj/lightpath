@@ -40,7 +40,7 @@ void Light::nextFrame() {
   bri = list->getBri(this);
   brightness = getBrightness();
   if (list == NULL) {
-    position += speed;
+    position += lightgraphMotionDistance(speed);
   }
   else {
     position = list->getPosition(this);

@@ -18,7 +18,7 @@ float Behaviour::getPosition(RuntimeLight* const light) const {
       return LG_RANDOM(light->getModel()->getMaxLength());
     }
   }
-  return light->position + light->getSpeed();
+  return light->position + lightgraphMotionDistance(light->getSpeed());
 }
 
 ColorRGB Behaviour::getColor(const RuntimeLight *light, uint8_t /*group*/) const {

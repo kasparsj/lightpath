@@ -139,6 +139,7 @@ ColorRGB sampleReplaceOnlyResult() {
 int main() {
     std::srand(2);
     gMillis = 0;
+    lightgraphResetFrameTiming();
 
     // Off-by-one regression: model selector should allow LAST enum values.
     {
@@ -358,6 +359,48 @@ int main() {
             return fail("Remote sparse snapshot should keep the brightest duplicate mapped light");
         }
         delete list;
+    }
+
+    // Motion should advance by elapsed time, not by update count.
+    {
+        LightList list;
+        list.speed = 1.0f;
+
+        Light lightA(&list, list.speed, INFINITE_DURATION, 0, 255);
+        Light lightB(&list, list.speed, INFINITE_DURATION, 0, 255);
+        lightA.position = 0.0f;
+        lightB.position = 0.0f;
+
+        gMillis = 0;
+        lightgraphResetFrameTiming();
+        lightgraphAdvanceFrameTiming(gMillis);
+        for (uint8_t i = 0; i < 10; i++) {
+            gMillis += 16;
+            lightgraphAdvanceFrameTiming(gMillis);
+            lightA.nextFrame();
+        }
+
+        gMillis = 0;
+        lightgraphResetFrameTiming();
+        lightgraphAdvanceFrameTiming(gMillis);
+        for (uint8_t i = 0; i < 5; i++) {
+            gMillis += 32;
+            lightgraphAdvanceFrameTiming(gMillis);
+            lightB.nextFrame();
+        }
+
+#if LIGHTGRAPH_FPS_INDEPENDENT_SPEED
+        if (std::fabs(lightA.position - lightB.position) > 0.001f) {
+            return fail("Light motion should be FPS independent for equal elapsed time");
+        }
+        if (std::fabs(lightA.position - 10.0f) > 0.001f) {
+            return fail("Light motion should preserve legacy speed at the reference frame rate");
+        }
+#else
+        if (!(lightA.position > lightB.position + 0.001f)) {
+            return fail("Legacy frame-driven motion should depend on update count");
+        }
+#endif
     }
 
     // Lifecycle smoke: emit should render at least one pixel and stopAll should clear active lists.

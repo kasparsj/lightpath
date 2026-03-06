@@ -224,10 +224,22 @@ void State::doEmit(Owner* from, LightList *lightList, EmitParams& params) {
 }
 
 void State::update() {
-  std::fill(pixelValuesR.begin(), pixelValuesR.end(), 0);
-  std::fill(pixelValuesG.begin(), pixelValuesG.end(), 0);
-  std::fill(pixelValuesB.begin(), pixelValuesB.end(), 0);
-  std::fill(pixelDiv.begin(), pixelDiv.end(), 0);
+  lightgraphAdvanceFrameTiming(gMillis);
+  const uint8_t substeps = lightgraphSimulationSubsteps();
+  for (uint8_t step = 0; step < substeps; step++) {
+    lightgraphSetSimulationSubstep(substeps);
+    updatePass(step + 1 == substeps);
+  }
+}
+
+void State::updatePass(bool renderStep) {
+  if (renderStep) {
+    std::fill(pixelValuesR.begin(), pixelValuesR.end(), 0);
+    std::fill(pixelValuesG.begin(), pixelValuesG.end(), 0);
+    std::fill(pixelValuesB.begin(), pixelValuesB.end(), 0);
+    std::fill(pixelDiv.begin(), pixelDiv.end(), 0);
+  }
+
   for (uint8_t i=0; i<MAX_LIGHT_LISTS; i++) {
     LightList* lightList = lightLists[i];
     if (lightList == NULL) continue;
@@ -244,9 +256,11 @@ void State::update() {
         else if (lightList->visible) {
       // Check if the lightList is a BgLight
       if (lightList->editable && lightList->numLights == 0) {
-        for (uint16_t p = 0; p < object.pixelCount; p++) {
-            ColorRGB color = lightList->getColor(p);
-            setPixel(p, color, lightList);
+        if (renderStep) {
+          for (uint16_t p = 0; p < object.pixelCount; p++) {
+              ColorRGB color = lightList->getColor(p);
+              setPixel(p, color, lightList);
+          }
         }
       }
       else {
@@ -254,7 +268,11 @@ void State::update() {
         for (uint16_t j=0; j<lightList->numLights; j++) {
             RuntimeLight* light = lightList->lights[j];
             if (light == NULL) continue;
-            updateLight(light);
+            if (renderStep) {
+              updateLight(light);
+            } else {
+              light->nextFrame();
+            }
         }
       }
     }
