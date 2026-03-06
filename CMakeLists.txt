@@ -381,7 +381,7 @@ if(LIGHTGRAPH_CORE_BUILD_TESTS)
     lightgraph_core_mutation_edges
     tests/core_mutation_edge_test.cpp
   )
-  target_link_libraries(lightgraph_core_mutation_edges PRIVATE lightgraph)
+  target_link_libraries(lightgraph_core_mutation_edges PRIVATE lightgraph::integration)
   if(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightgraph_core_mutation_edges PRIVATE ${LIGHTGRAPH_CORE_STRICT_WARNING_FLAGS})
   endif()

@@ -1,4 +1,5 @@
 #include <array>
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -7,10 +8,14 @@
 
 #include "../src/runtime/EmitParams.h"
 #include "../src/runtime/LightList.h"
+#include "../src/rendering/Palette.h"
 #include "../src/topology/Connection.h"
 #include "../src/topology/Intersection.h"
-#include "../src/topology/TopologyObject.h"
 #include "../src/topology/Model.h"
+#include "../src/topology/TopologyObject.h"
+#include "../include/lightgraph/integration/layers.hpp"
+#include "../include/lightgraph/integration/remote_ingress.hpp"
+#include "../include/lightgraph/integration/topology_summary.hpp"
 
 namespace {
 
@@ -248,6 +253,111 @@ int main() {
 
         if (countConnectedPorts(*hub) != 6) {
             return fail("6-port intersection did not retain all attached connections");
+        }
+    }
+
+    // Topology-owned removal must clear model weights when connections are deleted.
+    {
+        MinimalObject weightCleanupObject;
+        Intersection* left =
+            weightCleanupObject.addIntersection(new Intersection(3, 300, -1, GROUP1));
+        Intersection* right =
+            weightCleanupObject.addIntersection(new Intersection(3, 320, -1, GROUP1));
+        Connection* weightedConnection =
+            weightCleanupObject.addConnection(new Connection(left, right, GROUP1, 19));
+        Model* model = weightCleanupObject.getModel(0);
+        model->put(weightedConnection->fromPort, weightedConnection->toPort, 77);
+        if (model->weightCount() != 2) {
+            return fail("Model fixture should register both connection ports before cleanup");
+        }
+
+        if (!weightCleanupObject.removeConnection(weightedConnection)) {
+            return fail("removeConnection should succeed for weighted connection cleanup test");
+        }
+        if (model->weightCount() != 0) {
+            return fail("removeConnection should clear routing weights for removed ports");
+        }
+    }
+
+    // External port removal should trim trailing slots and clear model weights.
+    {
+        MinimalObject externalCleanupObject;
+        Intersection* owner =
+            externalCleanupObject.addIntersection(new Intersection(4, 340, -1, GROUP1));
+        const uint8_t remoteMac[6] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xAB};
+        ExternalPort* external =
+            externalCleanupObject.addExternalPort(owner, 3, true, GROUP1, remoteMac, 17);
+        if (external == nullptr) {
+            return fail("addExternalPort failed for cleanup test fixture");
+        }
+        Model* model = externalCleanupObject.getModel(0);
+        model->put(external, 42);
+
+        if (!externalCleanupObject.removeExternalPort(external)) {
+            return fail("removeExternalPort failed for valid external port");
+        }
+        if (model->weightCount() != 0) {
+            return fail("removeExternalPort should clear routing weights for removed external ports");
+        }
+        if (owner->numPorts != 2 || owner->ports.size() != 2) {
+            return fail("removeExternalPort should trim trailing empty intersection slots");
+        }
+    }
+
+    // updateIntersection should own topology mutation, group migration, and port-group sync.
+    {
+        MinimalObject updateObject;
+        Intersection* moved =
+            updateObject.addIntersection(new Intersection(4, 360, -1, GROUP1));
+        Intersection* peer =
+            updateObject.addIntersection(new Intersection(4, 380, -1, GROUP1));
+        Connection* attached = updateObject.addConnection(new Connection(moved, peer, GROUP1, 19));
+        if (attached == nullptr) {
+            return fail("Failed to create connection fixture for updateIntersection");
+        }
+        const uint8_t remoteMac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0x10, 0x20};
+        ExternalPort* external =
+            updateObject.addExternalPort(moved, 3, false, GROUP1, remoteMac, 9);
+        if (external == nullptr) {
+            return fail("Failed to create external port fixture for updateIntersection");
+        }
+        Model* model = updateObject.getModel(0);
+        model->put(attached->fromPort, attached->toPort, 64);
+        model->put(external, 12);
+
+        TopologyIntersectionUpdate update;
+        update.numPorts = 4;
+        update.topPixel = 365;
+        update.bottomPixel = 366;
+        update.group = GROUP2;
+        update.allowEndOfLife = false;
+        update.allowEmit = false;
+        if (!updateObject.updateIntersection(moved, update)) {
+            return fail("updateIntersection should succeed for valid topology mutation");
+        }
+        if (updateObject.countConnections(GROUP1) != 0 || updateObject.countConnections(GROUP2) != 0) {
+            return fail("updateIntersection should drop incompatible connections after group change");
+        }
+        if (model->weightCount() != 1) {
+            return fail(
+                "updateIntersection should clear removed connection-port weights while preserving surviving external-port weights");
+        }
+        if (moved->group != GROUP2 || moved->topPixel != 365 || moved->bottomPixel != 366) {
+            return fail("updateIntersection did not apply the requested topology fields");
+        }
+        if (moved->allowEndOfLife || moved->allowEmit) {
+            return fail("updateIntersection did not apply intersection policy flags");
+        }
+        if (external->group != GROUP2) {
+            return fail("updateIntersection should sync surviving external ports to new group");
+        }
+        if (std::find(updateObject.inter[0].begin(), updateObject.inter[0].end(), moved) !=
+            updateObject.inter[0].end()) {
+            return fail("updateIntersection should remove moved intersection from old group view");
+        }
+        if (std::find(updateObject.inter[1].begin(), updateObject.inter[1].end(), moved) ==
+            updateObject.inter[1].end()) {
+            return fail("updateIntersection should place moved intersection in new group view");
         }
     }
 
@@ -707,6 +817,53 @@ int main() {
         if (light->outPort != nullptr) {
             return fail("Failed external forwarding should clear out-port for rerouting");
         }
+    }
+
+    // Integration helpers should provide normalized palette views and topology summaries.
+    {
+        lightgraph::integration::PaletteView rawPalette;
+        rawPalette.colors = {0xFF0000, 0x00FF00, 0x0000FF};
+        rawPalette.positions = {1.0f, 0.0f, 0.5f};
+        rawPalette.segmentation = 2.0f;
+        const lightgraph::integration::PaletteView normalizedPalette =
+            lightgraph::integration::normalizePalette(rawPalette);
+        if (normalizedPalette.colors.size() != 3 || normalizedPalette.positions.size() != 3) {
+            return fail("normalizePalette should preserve palette cardinality");
+        }
+        if (normalizedPalette.colors[0] != 0x00FF00 || normalizedPalette.colors[2] != 0xFF0000) {
+            return fail("normalizePalette should sort colors by ascending position");
+        }
+        if (normalizedPalette.positions[0] != 0.0f || normalizedPalette.positions[1] != 0.5f ||
+            normalizedPalette.positions[2] != 1.0f) {
+            return fail("normalizePalette should retain normalized positions after sorting");
+        }
+
+        MinimalObject summaryObject;
+        Intersection* summaryLeft =
+            summaryObject.addIntersection(new Intersection(2, 400, -1, GROUP1));
+        Intersection* summaryRight =
+            summaryObject.addIntersection(new Intersection(2, 410, -1, GROUP1));
+        summaryObject.addConnection(new Connection(summaryLeft, summaryRight, GROUP1, 9));
+        summaryObject.addGap(401, 402);
+        const lightgraph::integration::TopologySummary summary =
+            lightgraph::integration::summarizeTopology(summaryObject);
+        if (summary.intersections.size() != 2 || summary.connections.size() != 1 ||
+            summary.gaps.size() != 1) {
+            return fail("summarizeTopology should capture topology intersections, connections, and gaps");
+        }
+
+        lightgraph::integration::remote_ingress::EmitIntentDescriptor descriptor;
+        descriptor.length = 3;
+        descriptor.speed = 1.0f;
+        descriptor.model = summaryObject.getModel(0);
+        descriptor.palette = lightgraph::integration::paletteFromView(normalizedPalette);
+        LightList* materialized =
+            lightgraph::integration::remote_ingress::buildEmitIntentList(descriptor);
+        if (materialized == nullptr || materialized->numLights != 3) {
+            delete materialized;
+            return fail("remote ingress helper should materialize an emit-intent light list");
+        }
+        delete materialized;
     }
 
     ::sendLightViaESPNow = nullptr;

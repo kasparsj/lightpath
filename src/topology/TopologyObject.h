@@ -81,6 +81,15 @@ struct TopologySnapshot {
     std::vector<PixelGap> gaps;
 };
 
+struct TopologyIntersectionUpdate {
+    uint8_t numPorts = 2;
+    uint16_t topPixel = 0;
+    int16_t bottomPixel = -1;
+    uint8_t group = 0;
+    bool allowEndOfLife = true;
+    bool allowEmit = true;
+};
+
 class TopologyObject {
 
   public:
@@ -113,6 +122,7 @@ class TopologyObject {
     bool removeIntersection(Intersection* intersection);
     bool removeConnection(uint8_t groupIndex, size_t index);
     bool removeConnection(Connection* connection);
+    bool updateIntersection(Intersection* intersection, const TopologyIntersectionUpdate& update);
     Intersection* findIntersectionById(uint8_t intersectionId) const;
     Intersection* findIntersectionByIdAndGroup(uint8_t intersectionId, uint8_t requestedGroup) const;
     Intersection* findIntersectionContainingInternalPortId(uint8_t internalPortId) const;
@@ -208,6 +218,8 @@ class TopologyObject {
     void releaseOwnership(Port* port);
 
   private:
+    void removePortFromModels(const Port* port);
+    void trimTrailingEmptyPortSlots(Intersection* intersection, uint8_t minPorts = 2);
     std::vector<std::unique_ptr<Intersection>> ownedIntersections_;
     std::vector<std::unique_ptr<Connection>> ownedConnections_;
     std::vector<std::unique_ptr<Model>> ownedModels_;

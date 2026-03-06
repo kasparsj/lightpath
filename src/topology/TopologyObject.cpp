@@ -151,6 +151,8 @@ bool TopologyObject::removeExternalPort(Port* port) {
     if (port == nullptr || !port->isExternal()) {
         return false;
     }
+    Intersection* ownerIntersection = port->intersection;
+    removePortFromModels(port);
     auto it = std::find_if(
         ownedExternalPorts_.begin(),
         ownedExternalPorts_.end(),
@@ -159,6 +161,7 @@ bool TopologyObject::removeExternalPort(Port* port) {
         return false;
     }
     ownedExternalPorts_.erase(it);
+    trimTrailingEmptyPortSlots(ownerIntersection);
     return true;
 }
 
@@ -198,6 +201,13 @@ bool TopologyObject::removeIntersection(Intersection* intersection) {
         removeExternalPort(port);
     }
 
+    for (uint8_t slotIndex = 0; slotIndex < intersection->numPorts; slotIndex++) {
+        Port* port = intersection->ports[slotIndex];
+        if (port != nullptr) {
+            removePortFromModels(port);
+        }
+    }
+
     bool removedFromView = false;
     for (uint8_t i = 0; i < MAX_GROUPS; i++) {
         auto& intersections = inter[i];
@@ -228,6 +238,10 @@ bool TopologyObject::removeConnection(uint8_t groupIndex, size_t index) {
     }
     Connection* connection = conn[groupIndex][index];
     conn[groupIndex].erase(conn[groupIndex].begin() + static_cast<std::ptrdiff_t>(index));
+    if (connection != nullptr) {
+        removePortFromModels(connection->fromPort);
+        removePortFromModels(connection->toPort);
+    }
     releaseOwnership(connection);
     return true;
 }
@@ -240,11 +254,97 @@ bool TopologyObject::removeConnection(Connection* connection) {
         auto it = std::find(conn[i].begin(), conn[i].end(), connection);
         if (it != conn[i].end()) {
             conn[i].erase(it);
+            removePortFromModels(connection->fromPort);
+            removePortFromModels(connection->toPort);
             releaseOwnership(connection);
             return true;
         }
     }
     return false;
+}
+
+bool TopologyObject::updateIntersection(Intersection* intersection, const TopologyIntersectionUpdate& update) {
+    if (intersection == nullptr || update.numPorts < 2) {
+        return false;
+    }
+
+    const uint8_t groupIndex = groupIndexForMask(update.group);
+    if (update.group == 0 || groupIndex >= MAX_GROUPS ||
+        (update.group & (update.group - 1)) != 0) {
+        return false;
+    }
+
+    if (update.numPorts != intersection->numPorts) {
+        if (update.numPorts < intersection->numPorts) {
+            for (uint8_t slotIndex = update.numPorts; slotIndex < intersection->numPorts; slotIndex++) {
+                if (intersection->ports[slotIndex] != nullptr) {
+                    return false;
+                }
+            }
+        }
+
+        std::vector<Port*> resizedPorts(update.numPorts, nullptr);
+        const uint8_t preservedSlots = std::min(update.numPorts, intersection->numPorts);
+        for (uint8_t slotIndex = 0; slotIndex < preservedSlots; slotIndex++) {
+            resizedPorts[slotIndex] = intersection->ports[slotIndex];
+        }
+        intersection->ports = std::move(resizedPorts);
+        intersection->numPorts = update.numPorts;
+    }
+
+    const bool topologyChanged =
+        update.topPixel != intersection->topPixel ||
+        update.bottomPixel != intersection->bottomPixel ||
+        update.group != intersection->group;
+
+    if (topologyChanged) {
+        std::vector<Connection*> attachedConnections;
+        for (uint8_t i = 0; i < MAX_GROUPS; i++) {
+            for (Connection* connection : conn[i]) {
+                if (connection != nullptr &&
+                    (connection->from == intersection || connection->to == intersection)) {
+                    attachedConnections.push_back(connection);
+                }
+            }
+        }
+
+        for (Connection* connection : attachedConnections) {
+            removeConnection(connection);
+        }
+
+        const uint8_t oldGroup = intersection->group;
+        intersection->topPixel = update.topPixel;
+        intersection->bottomPixel = update.bottomPixel;
+        intersection->group = update.group;
+
+        const uint8_t oldGroupIndex = groupIndexForMask(oldGroup);
+        const uint8_t newGroupIndex = groupIndexForMask(update.group);
+        if (oldGroupIndex < MAX_GROUPS && newGroupIndex < MAX_GROUPS && oldGroupIndex != newGroupIndex) {
+            auto& oldGroupIntersections = inter[oldGroupIndex];
+            oldGroupIntersections.erase(
+                std::remove(oldGroupIntersections.begin(), oldGroupIntersections.end(), intersection),
+                oldGroupIntersections.end());
+
+            auto& newGroupIntersections = inter[newGroupIndex];
+            if (std::find(newGroupIntersections.begin(), newGroupIntersections.end(), intersection) ==
+                newGroupIntersections.end()) {
+                newGroupIntersections.push_back(intersection);
+            }
+        }
+
+        for (uint8_t slotIndex = 0; slotIndex < intersection->numPorts; slotIndex++) {
+            Port* port = intersection->ports[slotIndex];
+            if (port != nullptr && port->isExternal()) {
+                port->group = update.group;
+            }
+        }
+
+        recalculateConnections(true);
+    }
+
+    intersection->allowEndOfLife = update.allowEndOfLife;
+    intersection->allowEmit = update.allowEmit;
+    return true;
 }
 
 Intersection* TopologyObject::findIntersectionById(uint8_t intersectionId) const {
@@ -911,6 +1011,39 @@ void TopologyObject::releaseOwnership(Connection* connection) {
 
     if (it != ownedConnections_.end()) {
         ownedConnections_.erase(it);
+    }
+}
+
+void TopologyObject::removePortFromModels(const Port* port) {
+    if (port == nullptr) {
+        return;
+    }
+    for (Model* model : models) {
+        if (model != nullptr) {
+            model->removePort(port);
+        }
+    }
+}
+
+void TopologyObject::trimTrailingEmptyPortSlots(Intersection* intersection, uint8_t minPorts) {
+    if (intersection == nullptr) {
+        return;
+    }
+    if (minPorts < 2) {
+        minPorts = 2;
+    }
+    if (intersection->numPorts <= minPorts) {
+        return;
+    }
+
+    uint8_t trimmedNumPorts = intersection->numPorts;
+    while (trimmedNumPorts > minPorts && intersection->ports[trimmedNumPorts - 1] == nullptr) {
+        trimmedNumPorts--;
+    }
+
+    if (trimmedNumPorts != intersection->numPorts) {
+        intersection->numPorts = trimmedNumPorts;
+        intersection->ports.resize(trimmedNumPorts);
     }
 }
 
