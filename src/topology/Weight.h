@@ -11,13 +11,14 @@ class Weight {
     Weight(uint8_t w) : w(w) {}
     
     void add(const Port *incoming, uint8_t w);
+    void add(uint16_t incomingPortId, uint8_t w);
     uint8_t get(const Port *incoming) const;
     void remove(const Port *incoming);
     uint8_t defaultWeight() const { return w; }
-    const std::unordered_map<uint8_t, uint8_t>& conditionalWeights() const { return conditional; }
+    const std::unordered_map<uint16_t, uint8_t>& conditionalWeights() const { return conditional; }
     
   private:
     uint8_t w;
-    std::unordered_map<uint8_t, uint8_t> conditional;
+    std::unordered_map<uint16_t, uint8_t> conditional;
   
 };

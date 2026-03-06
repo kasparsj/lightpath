@@ -3,13 +3,11 @@
 #include <iostream>
 #include <string>
 
-#include "../src/runtime/EmitParams.h"
-#include "../src/HashMap.h"
-#include "../src/topology/Model.h"
-#include "../src/runtime/LightList.h"
-#include "../src/runtime/State.h"
-#include "../src/objects/Line.h"
-#include "../src/Globals.h"
+#include "lightgraph/internal/Globals.h"
+#include "lightgraph/internal/HashMap.h"
+#include "lightgraph/internal/objects.hpp"
+#include "lightgraph/internal/runtime.hpp"
+#include "lightgraph/internal/topology.hpp"
 
 namespace {
 

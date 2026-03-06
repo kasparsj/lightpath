@@ -5,21 +5,14 @@
 #include <string>
 #include <vector>
 
-#include "../src/runtime/BgLight.h"
-#include "../src/runtime/Light.h"
-#include "../src/runtime/RemoteSnapshotBuilder.h"
-#include "../src/topology/Connection.h"
-#include "../src/core/Types.h"
-#include "../src/core/Limits.h"
-#include "../src/runtime/EmitParams.h"
-#include "../src/Globals.h"
-#include "../src/topology/Intersection.h"
-#include "../src/rendering/Palette.h"
-#include "../src/topology/Port.h"
-#include "../src/runtime/State.h"
-#include "../src/objects/Cross.h"
-#include "../src/objects/Line.h"
-#include "../src/objects/Triangle.h"
+#include "lightgraph/internal/Globals.h"
+#include "lightgraph/internal/core/Limits.h"
+#include "lightgraph/internal/core/Types.h"
+#include "lightgraph/internal/objects.hpp"
+#include "lightgraph/internal/rendering.hpp"
+#include "lightgraph/internal/runtime.hpp"
+#include "lightgraph/internal/runtime/RemoteSnapshotBuilder.h"
+#include "lightgraph/internal/topology.hpp"
 
 namespace {
 
@@ -480,7 +473,7 @@ int main() {
         }
     }
 
-    // Fade progression is still update-count dependent; this characterizes the remaining issue.
+    // Fade progression should now follow elapsed time instead of update cadence.
     {
         LightList fadeListA;
         fadeListA.setFade(5, 0, EASE_NONE);
@@ -496,8 +489,8 @@ int main() {
         advanceLightCadence(fadeLightB, {32, 32, 32, 32, 32});
 
 #if LIGHTGRAPH_FPS_INDEPENDENT_SPEED
-        if (fadeLightA.bri == fadeLightB.bri || fadeLightA.brightness == fadeLightB.brightness) {
-            return fail("Fade characterization should reproduce the remaining cadence-dependent fade progression");
+        if (fadeLightA.bri != fadeLightB.bri || fadeLightA.brightness != fadeLightB.brightness) {
+            return fail("Fade progression should preserve brightness across equivalent elapsed time");
         }
 #endif
     }

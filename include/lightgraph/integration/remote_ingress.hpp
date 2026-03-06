@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/runtime/RemoteIngress.h"
+#include "lightgraph/internal/runtime/RemoteIngress.h"
 
 /**
  * @file remote_ingress.hpp

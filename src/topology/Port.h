@@ -2,10 +2,12 @@
 
 #include <array>
 #include <cstdint>
+#include <limits>
 
 class Connection;
 class Intersection;
 class RuntimeLight;
+class TopologyObject;
 
 class Port {
 
@@ -15,9 +17,12 @@ class Port {
         External = 1,
     };
 
-    uint8_t id;
+    static constexpr uint16_t INVALID_ID = std::numeric_limits<uint16_t>::max();
+
+    uint16_t id = INVALID_ID;
     Connection* connection;
     Intersection* intersection;
+    TopologyObject* object = nullptr;
     bool direction;
     uint8_t group;
   
@@ -26,26 +31,12 @@ class Port {
     virtual void sendOut(RuntimeLight* const light, bool sendList = false) = 0;
     virtual bool isExternal() const { return false; }
     virtual Type portType() const { return Type::Internal; }
-    
-    // Static pool management
-    static Port* findById(uint8_t id);
-    static void addToPool(Port* port);
-    static void removeFromPool(Port* port);
-    static uint8_t poolCount() { return poolSize; }
-    static uint8_t allocateId();
-    static void setNextId(uint8_t id);
-    static uint8_t nextId() { return nextPortId; }
-    
+    static uint16_t poolCount();
+    static void setNextId(uint16_t id);
+    static uint16_t nextId();
+
   protected:
     void handleColorChange(RuntimeLight* const light) const;
-    
-  private:
-    // IDs are uint8_t; cap the registry to that addressable space.
-    static const uint8_t MAX_PORTS = 255;
-    static Port* portPool[MAX_PORTS];
-    static uint8_t poolSize;
-    static uint8_t nextPortId;
-  
 };
 
 class InternalPort : public Port {
@@ -70,5 +61,6 @@ class ExternalPort : public Port {
     virtual Type portType() const override { return Type::External; }
 };
 
-// Function pointer for optional ESP-NOW functionality
+// Legacy global fallback for source integrations that have not yet migrated to
+// TopologyObject::setExternalSendHook().
 extern bool (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, RuntimeLight* const light, bool sendList);

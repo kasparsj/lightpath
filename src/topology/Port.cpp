@@ -1,9 +1,9 @@
 #include "Port.h"
 
 #include <cstring>
-#include <limits>
 #include "Connection.h"
 #include "Intersection.h"
+#include "TopologyObject.h"
 #include "../runtime/Behaviour.h"
 #include "../runtime/LightList.h"
 #include "../runtime/RuntimeLight.h"
@@ -11,13 +11,14 @@
 // Initialize function pointer to null
 bool (*sendLightViaESPNow)(const uint8_t* mac, uint8_t id, RuntimeLight* const light, bool sendList) = nullptr;
 
-// Initialize static members for Port pool
-Port* Port::portPool[Port::MAX_PORTS] = {nullptr};
-uint8_t Port::poolSize = 0;
-uint8_t Port::nextPortId = 0;
+namespace {
+
+uint16_t gLegacyLivePortCount = 0;
+uint16_t gLegacyNextPortIdHint = 0;
+
+} // namespace
 
 Port::Port(Connection* connection, Intersection* intersection, bool direction, uint8_t group, int16_t slotIndex) {
-    this->id = allocateId();
     this->connection = connection;
     this->intersection = intersection;
     this->direction = direction;
@@ -29,67 +30,32 @@ Port::Port(Connection* connection, Intersection* intersection, bool direction, u
             this->intersection->addPort(this);
         }
     }
-    addToPool(this);
+    gLegacyLivePortCount++;
 }
 
 Port::~Port() {
+    if (object != nullptr) {
+        object->unregisterPort(this);
+        object = nullptr;
+    }
     if (intersection != nullptr) {
         intersection->removePort(this);
     }
-    removeFromPool(this);
-}
-
-Port* Port::findById(uint8_t id) {
-    for (uint8_t i = 0; i < poolSize; i++) {
-        if (portPool[i] && portPool[i]->id == id) {
-            return portPool[i];
-        }
-    }
-    return nullptr;
-}
-
-void Port::addToPool(Port* port) {
-    if (port && poolSize < MAX_PORTS) {
-        portPool[poolSize++] = port;
+    if (gLegacyLivePortCount > 0) {
+        gLegacyLivePortCount--;
     }
 }
 
-void Port::removeFromPool(Port* port) {
-    if (!port) return;
-    
-    for (uint8_t i = 0; i < poolSize; i++) {
-        if (portPool[i] == port) {
-            // Shift remaining ports down
-            for (uint8_t j = i; j < poolSize - 1; j++) {
-                portPool[j] = portPool[j + 1];
-            }
-            portPool[--poolSize] = nullptr;
-            break;
-        }
-    }
+uint16_t Port::poolCount() {
+    return gLegacyLivePortCount;
 }
 
-uint8_t Port::allocateId() {
-    for (uint16_t attempts = 0; attempts <= std::numeric_limits<uint8_t>::max(); ++attempts) {
-        const uint8_t candidate = nextPortId++;
-        bool inUse = false;
-        for (uint8_t i = 0; i < poolSize; i++) {
-            if (portPool[i] != nullptr && portPool[i]->id == candidate) {
-                inUse = true;
-                break;
-            }
-        }
-        if (!inUse) {
-            return candidate;
-        }
-    }
-
-    // All IDs are currently occupied; return next rollover value as a last resort.
-    return nextPortId++;
+void Port::setNextId(uint16_t id) {
+    gLegacyNextPortIdHint = id;
 }
 
-void Port::setNextId(uint8_t id) {
-    nextPortId = id;
+uint16_t Port::nextId() {
+    return gLegacyNextPortIdHint;
 }
 
 InternalPort::InternalPort(Connection* connection, Intersection* intersection, bool direction, uint8_t group,
@@ -153,8 +119,12 @@ void ExternalPort::sendOut(RuntimeLight* const light, bool sendList) {
 
     bool sendSucceeded = true;
     if (shouldSend) {
-        sendSucceeded = sendLightViaESPNow != nullptr &&
-                        sendLightViaESPNow(device.data(), targetId, light, sendAsBatch);
+        const LightgraphExternalSendHook sendHook =
+            (object != nullptr && object->externalSendHook() != nullptr)
+                ? object->externalSendHook()
+                : sendLightViaESPNow;
+        sendSucceeded = sendHook != nullptr &&
+                        sendHook(device.data(), targetId, light, sendAsBatch);
         if (sendSucceeded && sendAsBatch) {
             list->markExternalBatchForwarded(device.data(), targetId);
         }

@@ -4,15 +4,10 @@
 #include <iostream>
 #include <string>
 
-#include "../src/Globals.h"
-#include "../src/objects/Cross.h"
-#include "../src/objects/Line.h"
-#include "../src/runtime/EmitParams.h"
-#include "../src/runtime/LightList.h"
-#include "../src/runtime/State.h"
-#include "../src/topology/Connection.h"
-#include "../src/topology/Intersection.h"
-#include "../src/topology/Model.h"
+#include "lightgraph/internal/Globals.h"
+#include "lightgraph/internal/objects.hpp"
+#include "lightgraph/internal/runtime.hpp"
+#include "lightgraph/internal/topology.hpp"
 
 namespace {
 

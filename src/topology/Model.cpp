@@ -8,5 +8,5 @@ uint16_t Model::getMaxLength() const {
     if (maxLength > 0) {
         return maxLength;
     }
-    return TopologyObject::instance->pixelCount;
+    return (object_ != nullptr) ? object_->pixelCount : 0;
 }

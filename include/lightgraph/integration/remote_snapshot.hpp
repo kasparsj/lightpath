@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/runtime/RemoteSnapshotBuilder.h"
+#include "lightgraph/internal/runtime/RemoteSnapshotBuilder.h"
 
 /**
  * @file remote_snapshot.hpp

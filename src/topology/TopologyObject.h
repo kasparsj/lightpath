@@ -4,10 +4,12 @@
 #include <cstddef>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 #include "Intersection.h"
 #include "Connection.h"
 #include "Model.h"
+#include "../Globals.h"
 #include "../runtime/EmitParams.h"
 
 struct PixelGap {
@@ -93,7 +95,6 @@ struct TopologyIntersectionUpdate {
 class TopologyObject {
 
   public:
-    static TopologyObject* instance;
     uint16_t pixelCount;
     uint16_t realPixelCount;
     std::vector<Intersection*> inter[MAX_GROUPS];
@@ -125,18 +126,28 @@ class TopologyObject {
     bool updateIntersection(Intersection* intersection, const TopologyIntersectionUpdate& update);
     Intersection* findIntersectionById(uint8_t intersectionId) const;
     Intersection* findIntersectionByIdAndGroup(uint8_t intersectionId, uint8_t requestedGroup) const;
-    Intersection* findIntersectionContainingInternalPortId(uint8_t internalPortId) const;
+    Intersection* findIntersectionContainingInternalPortId(uint16_t internalPortId) const;
     ExternalPort* findExternalPortByExactParams(const uint8_t deviceMac[6], uint8_t targetPortId,
                                                 bool direction, uint8_t group) const;
+    Port* findPortById(uint16_t portId) const;
     bool hasAvailablePort(const Intersection* intersection) const;
     int16_t findFirstFreePortSlotIndex(const Intersection* intersection) const;
     bool ensureIntersectionHasFreePortSlot(Intersection* intersection, uint8_t maxPorts = 9);
     bool areIntersectionsConnected(const Intersection* inter1, const Intersection* inter2) const;
     bool hasIntersectionBetween(const Intersection* inter1, const Intersection* inter2) const;
     void recalculateConnections(bool preserveVirtualConnections = true);
-    TopologySnapshot exportSnapshot() const;
+    bool exportSnapshot(TopologySnapshot& snapshot) const;
     bool importSnapshot(const TopologySnapshot& snapshot, bool replaceModels = true);
     virtual Connection* addBridge(uint16_t fromPixel, uint16_t toPixel, uint8_t group, uint8_t numPorts = 2);
+    LightgraphRuntimeContext& runtimeContext() { return runtimeContext_; }
+    const LightgraphRuntimeContext& runtimeContext() const { return runtimeContext_; }
+    void setNowMillis(unsigned long nowMillis) { lightgraphSetNowMillis(runtimeContext_, nowMillis); }
+    unsigned long nowMillis() const {
+        return runtimeContext_.hasExplicitNowMillis ? runtimeContext_.nowMillis : gMillis;
+    }
+    void setExternalSendHook(LightgraphExternalSendHook hook) { runtimeContext_.externalSendHook = hook; }
+    LightgraphExternalSendHook externalSendHook() const { return runtimeContext_.externalSendHook; }
+    size_t portCount() const { return portRegistry_.size(); }
     Model* getModel(int i) {
       return i >= 0 && static_cast<size_t>(i) < models.size() ? models[i] : nullptr;
     }
@@ -216,12 +227,22 @@ class TopologyObject {
     void releaseOwnership(Connection* connection);
     void releaseOwnership(Intersection* intersection);
     void releaseOwnership(Port* port);
+    bool registerPort(Port* port, std::optional<uint16_t> preferredId = std::nullopt);
+    bool reassignPortId(Port* port, uint16_t preferredId);
+    void unregisterPort(const Port* port);
+    void resetPortRegistry();
 
   private:
     void removePortFromModels(const Port* port);
     void trimTrailingEmptyPortSlots(Intersection* intersection, uint8_t minPorts = 2);
+    uint16_t allocatePortId() const;
     std::vector<std::unique_ptr<Intersection>> ownedIntersections_;
     std::vector<std::unique_ptr<Connection>> ownedConnections_;
     std::vector<std::unique_ptr<Model>> ownedModels_;
     std::vector<std::unique_ptr<Port>> ownedExternalPorts_;
+    std::unordered_map<uint16_t, Port*> portRegistry_;
+    mutable uint16_t nextPortId_ = 0;
+    LightgraphRuntimeContext runtimeContext_;
+
+    friend class Port;
 };

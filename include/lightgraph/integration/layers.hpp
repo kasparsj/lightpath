@@ -1,7 +1,7 @@
 #pragma once
 
 #include "runtime.hpp"
-#include "src/runtime/LayerView.h"
+#include "lightgraph/internal/runtime/LayerView.h"
 
 /**
  * @file layers.hpp

@@ -2,6 +2,11 @@
 
 This document describes supported package-consumption paths for Lightgraph.
 
+Only the stable API under `lightgraph/*.hpp` is part of the installable package
+surface. The build-only `lightgraph/integration/*` and `lightgraph/internal/*`
+headers are for source-tree integrations inside this repository and are not
+installed by `cmake --install`.
+
 ## CMake Package (Primary)
 
 Install and consume as a CMake package:
@@ -46,7 +51,8 @@ vcpkg install lightgraph --overlay-ports=/path/to/lightgraph/packaging/vcpkg
 
 The package consumer smoke test under `tests/package_smoke/` validates that an
 installed Lightgraph package can be discovered with `find_package(lightgraph)`,
-linked, and executed.
+linked, and executed. That smoke test intentionally exercises only the stable
+installable API.
 
 ## Release Flow
 

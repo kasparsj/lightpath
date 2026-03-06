@@ -4,6 +4,7 @@
 #include "Intersection.h"
 #include "Connection.h"
 #include "Model.h"
+#include "TopologyObject.h"
 #include "../core/Platform.h"
 #include "../runtime/Behaviour.h"
 #include "../runtime/Light.h"
@@ -14,8 +15,12 @@ uint8_t Intersection::nextId = 0;
 namespace {
 
 void tryForwardSequentialBatchAtExternalPort(RuntimeLight* const light, Port* const port) {
+    const LightgraphExternalSendHook sendHook =
+        (port != nullptr && port->object != nullptr && port->object->externalSendHook() != nullptr)
+            ? port->object->externalSendHook()
+            : sendLightViaESPNow;
     if (light == nullptr || port == nullptr || !port->isExternal() || light->list == nullptr ||
-        light->list->order != LIST_ORDER_SEQUENTIAL || sendLightViaESPNow == nullptr) {
+        light->list->order != LIST_ORDER_SEQUENTIAL || sendHook == nullptr) {
         return;
     }
 
@@ -24,7 +29,7 @@ void tryForwardSequentialBatchAtExternalPort(RuntimeLight* const light, Port* co
         return;
     }
 
-    if (sendLightViaESPNow(externalPort->device.data(), externalPort->targetId, light, true)) {
+    if (sendHook(externalPort->device.data(), externalPort->targetId, light, true)) {
         light->list->markExternalBatchForwarded(externalPort->device.data(), externalPort->targetId);
     }
 }
@@ -126,12 +131,6 @@ void Intersection::update(RuntimeLight* const light) const {
                     0,
                     FULL_BRIGHTNESS));
                 light->setRenderedPixels(topPixel, adjacentPixel, secondaryWeight);
-            } else if (port != nullptr && port->isExternal()) {
-                const uint8_t primaryWeight = static_cast<uint8_t>(std::clamp<int32_t>(
-                    static_cast<int32_t>(round((1.0f - light->position) * FULL_BRIGHTNESS)),
-                    0,
-                    FULL_BRIGHTNESS));
-                light->setRenderedPixelWeighted(topPixel, primaryWeight);
             } else {
                 light->setRenderedPixel(topPixel);
             }

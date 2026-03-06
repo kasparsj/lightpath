@@ -1,7 +1,8 @@
 #pragma once
 
+#include "lightgraph/internal/topology/TopologySummary.h"
+
 #include "topology.hpp"
-#include "src/topology/TopologySummary.h"
 
 /**
  * @file topology_summary.hpp

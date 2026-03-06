@@ -12,7 +12,7 @@
  */
 class BgLight : public LightList {
 public:
-    float offset;
+    float offset = 0.0f;
     float position;
     
     // Override constructor to avoid allocating lights array
@@ -64,12 +64,16 @@ public:
     // Override update to render the background directly
     bool update() override {
         // Check expiration
-        if (lifeMillis > 0 && gMillis > lifeMillis) {
+        if (lifeMillis > 0 && runtimeContext().nowMillis > lifeMillis) {
             return true;  // Light has expired
         }
-        
-        // Update our internal time counter - this is what the easing is applied to
-        internalTime += speed;
+
+        if (length == 0) {
+            position = offset;
+            return false;
+        }
+
+        internalTime += lightgraphMotionDistance(runtimeContext(), speed);
         
         // Keep the internal time within a reasonable range
         while (internalTime > 1000) internalTime -= 1000;

@@ -14,11 +14,6 @@ option(LIGHTGRAPH_CORE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for host 
 option(LIGHTGRAPH_CORE_ENABLE_COVERAGE "Enable gcov/llvm-cov coverage instrumentation" OFF)
 option(LIGHTGRAPH_CORE_ENABLE_FRACTIONAL_RENDERING "Enable fractional subpixel rendering for simple moving lights" ON)
 option(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS "Enable strict compiler warnings and treat warnings as errors" OFF)
-option(
-  LIGHTGRAPH_CORE_ENABLE_LEGACY_INCLUDE_PATHS
-  "Expose include/src as public include roots for transitional source integrations"
-  OFF
-)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -130,19 +125,8 @@ target_link_libraries(lightgraph_integration INTERFACE lightgraph)
 target_include_directories(
   lightgraph_integration
   INTERFACE
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>"
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-    "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
 )
-
-if(LIGHTGRAPH_CORE_ENABLE_LEGACY_INCLUDE_PATHS)
-  target_include_directories(
-    lightgraph
-    PUBLIC
-      "${CMAKE_CURRENT_SOURCE_DIR}/include"
-      "${CMAKE_CURRENT_SOURCE_DIR}/src"
-  )
-endif()
 
 set(
   LIGHTGRAPH_CORE_PUBLIC_HEADERS
@@ -336,7 +320,7 @@ if(LIGHTGRAPH_CORE_BUILD_TESTS)
     tests/core_smoke_test.cpp
   )
 
-  target_link_libraries(lightgraph_core_smoke PRIVATE lightgraph)
+  target_link_libraries(lightgraph_core_smoke PRIVATE lightgraph::integration)
   if(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightgraph_core_smoke PRIVATE ${LIGHTGRAPH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -348,7 +332,7 @@ if(LIGHTGRAPH_CORE_BUILD_TESTS)
     tests/core_regression_test.cpp
   )
 
-  target_link_libraries(lightgraph_core_regression PRIVATE lightgraph)
+  target_link_libraries(lightgraph_core_regression PRIVATE lightgraph::integration)
   if(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightgraph_core_regression PRIVATE ${LIGHTGRAPH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -391,7 +375,7 @@ if(LIGHTGRAPH_CORE_BUILD_TESTS)
     lightgraph_core_remote_template_motion
     tests/core_remote_template_motion_test.cpp
   )
-  target_link_libraries(lightgraph_core_remote_template_motion PRIVATE lightgraph)
+  target_link_libraries(lightgraph_core_remote_template_motion PRIVATE lightgraph::integration)
   if(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightgraph_core_remote_template_motion PRIVATE ${LIGHTGRAPH_CORE_STRICT_WARNING_FLAGS})
   endif()
@@ -401,7 +385,7 @@ if(LIGHTGRAPH_CORE_BUILD_TESTS)
     lightgraph_core_topology_emit
     tests/core_topology_emit_test.cpp
   )
-  target_link_libraries(lightgraph_core_topology_emit PRIVATE lightgraph)
+  target_link_libraries(lightgraph_core_topology_emit PRIVATE lightgraph::integration)
   if(LIGHTGRAPH_CORE_ENABLE_STRICT_WARNINGS)
     target_compile_options(lightgraph_core_topology_emit PRIVATE ${LIGHTGRAPH_CORE_STRICT_WARNING_FLAGS})
   endif()

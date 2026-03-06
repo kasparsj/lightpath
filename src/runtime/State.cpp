@@ -214,6 +214,7 @@ void State::activateList(Owner* from, LightList *lightList, uint8_t emitOffset, 
     if (lightList == NULL) {
         return;
     }
+    lightList->bindRuntimeContext(object.runtimeContext());
     lightList->emitOffset = emitOffset;
     lightList->numEmitted = 0;
     lightList->numSplits = 0;
@@ -234,10 +235,10 @@ void State::doEmit(Owner* from, LightList *lightList, EmitParams& params) {
 }
 
 void State::update() {
-  lightgraphAdvanceFrameTiming(gMillis);
-  const uint8_t substeps = lightgraphSimulationSubsteps();
+  lightgraphAdvanceFrameTiming(object.runtimeContext(), object.nowMillis());
+  const uint8_t substeps = lightgraphSimulationSubsteps(object.runtimeContext());
   for (uint8_t step = 0; step < substeps; step++) {
-    lightgraphSetSimulationSubstep(substeps);
+    lightgraphSetSimulationSubstep(object.runtimeContext(), substeps);
     updatePass(step + 1 == substeps);
   }
 }
@@ -630,11 +631,13 @@ void State::setupBg(uint8_t i) {
     if (bgLight == nullptr) {
         LG_LOGLN("setupBg failed: OOM creating background layer");
         lightgraphReportAllocationFailure(
+            object.runtimeContext(),
             LightgraphAllocationFailureSite::SetupBgAllocation,
             static_cast<uint16_t>(i),
             0);
         return;
     }
+    bgLight->bindRuntimeContext(object.runtimeContext());
     lightLists[i] = bgLight;
 
     // Configure the BgLight
@@ -725,6 +728,7 @@ bool State::replaceListSlot(uint8_t slot, LightList* replacement) {
         return true;
     }
 
+    replacement->bindRuntimeContext(object.runtimeContext());
     lightLists[slot] = replacement;
     totalLights = static_cast<uint16_t>(totalLights + replacement->numLights);
     if (totalLightLists < std::numeric_limits<uint8_t>::max()) {

@@ -11,7 +11,7 @@ class Light : public RuntimeLight {
 
     Light(LightList *parent, float speed, uint32_t lifeMillis, uint16_t idx = 0, uint8_t maxBri = 255);
     
-    Light(uint8_t maxBri, float speed, uint32_t lifeMillis) : Light(0, maxBri, speed, lifeMillis, 0) {
+    Light(uint8_t maxBri, float speed, uint32_t lifeMillis) : Light(nullptr, speed, lifeMillis, 0, maxBri) {
     }
     
     Light(uint8_t maxBri) : Light(maxBri, DEFAULT_SPEED, INFINITE_DURATION) {
@@ -20,35 +20,35 @@ class Light : public RuntimeLight {
     Light() : Light(255) {
     }
 
-    float getSpeed() const {
+    float getSpeed() const override {
         return speed;
     }
     void setSpeed(float speed) {
         this->speed = speed;
     }
-    uint32_t getLife() const {
+    uint32_t getLife() const override {
         return lifeMillis;
     }
-    void setDuration(uint32_t durMillis) {
+    void setDuration(uint32_t durMillis) override {
         lifeMillis = static_cast<uint32_t>(std::min(
-            static_cast<unsigned long>(gMillis + durMillis),
+            static_cast<unsigned long>(runtimeContext().nowMillis + durMillis),
             static_cast<unsigned long>(INFINITE_DURATION)));
     }
-    ColorRGB getColor() const {
+    ColorRGB getColor() const override {
         return color;
     }
-    void setColor(ColorRGB color) {
+    void setColor(ColorRGB color) override {
       this->color = color;
     }
 
-    uint8_t getBrightness() const;
+    uint8_t getBrightness() const override;
     ColorRGB getPixelColorAt(int16_t pixel) const override;
-    ColorRGB getPixelColor() const;
-    void nextFrame();
-    bool shouldExpire() const;
+    ColorRGB getPixelColor() const override;
+    void nextFrame() override;
+    bool shouldExpire() const override;
     
-    const Model* getModel() const;
-    const Behaviour* getBehaviour() const;
+    const Model* getModel() const override;
+    const Behaviour* getBehaviour() const override;
 
   private:
 

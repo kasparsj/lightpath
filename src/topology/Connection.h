@@ -6,6 +6,7 @@
 
 class Intersection;
 class RuntimeLight;
+class TopologyObject;
 
 class Connection : public Owner {
 
@@ -14,6 +15,7 @@ class Connection : public Owner {
     Intersection* to;
     Port* fromPort;
     Port* toPort;
+    TopologyObject* object = nullptr;
     uint16_t numLeds = 0;
     bool pixelDir;
     uint16_t fromPixel;
@@ -31,9 +33,12 @@ class Connection : public Owner {
     }
     uint16_t getFromPixel() const;
     uint16_t getToPixel() const;
+    void attachToObject(TopologyObject& object);
     
   private:
+    void configurePixels(uint16_t objectPixelCount);
     void outgoing(RuntimeLight* const light) const;
     bool shouldExpire(const RuntimeLight* const light) const;
     bool render(RuntimeLight* const light) const;
+    int16_t forcedNumLeds_ = -1;
 };

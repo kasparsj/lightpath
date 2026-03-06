@@ -38,6 +38,7 @@ bool isPortAttachedToIntersection(const Intersection* intersection, const Port* 
 Connection::Connection(Intersection *from, Intersection *to, uint8_t group, int16_t forceNumLeds) : Owner(group) {
   this->from = from;
   this->to = to;
+  this->forcedNumLeds_ = forceNumLeds;
 
   fromPort = nullptr;
   toPort = nullptr;
@@ -68,43 +69,7 @@ Connection::Connection(Intersection *from, Intersection *to, uint8_t group, int1
   }
 
   pixelDir = to->topPixel > from->topPixel;
-  fromPixel = from->topPixel + (pixelDir ? 1 : -1);
-  toPixel = to->topPixel - (pixelDir ? 1 : -1);
-  
-  // If forceNumLeds is provided, use it, otherwise calculate
-  if (forceNumLeds > -1) {
-    numLeds = forceNumLeds;
-  } else {
-    uint16_t diff = abs(fromPixel - toPixel);
-    uint16_t leds = diff > 4 && diff < (TopologyObject::instance->pixelCount - 4) ? diff + 1 : 0;
-    if (from->bottomPixel > -1) {
-      if (abs(from->bottomPixel - to->topPixel) < leds) {
-        pixelDir = to->topPixel > from->bottomPixel;
-        fromPixel = from->bottomPixel + (pixelDir ? 1 : -1);
-        toPixel = to->topPixel - (pixelDir ? 1 : -1);
-        leds = abs(fromPixel - toPixel) + 1;
-      }
-    }
-    if (to->bottomPixel > -1) {
-      if (abs(from->topPixel - to->bottomPixel) < leds) {
-        pixelDir = to->bottomPixel > from->topPixel;
-        fromPixel = from->topPixel + (pixelDir ? 1 : -1);
-        toPixel = to->bottomPixel - (pixelDir ? 1 : -1);
-        leds = abs(fromPixel - toPixel) + 1;
-      }
-    }
-    if (from->bottomPixel > -1 && to->bottomPixel > -1) {
-      if (abs(from->bottomPixel - to->bottomPixel) < leds) {
-        pixelDir = to->bottomPixel > from->bottomPixel;
-        fromPixel = from->bottomPixel + (pixelDir ? 1 : -1);
-        toPixel = to->bottomPixel - (pixelDir ? 1 : -1);
-        leds = abs(fromPixel - toPixel) + 1;
-      }
-    }
-    if (leds > 0) {
-      numLeds = leds;
-    }
-  }
+  configurePixels(0);
 }
 
 Connection::~Connection() {
@@ -116,6 +81,56 @@ Connection::~Connection() {
     delete toPort;
     toPort = nullptr;
   }
+}
+
+void Connection::attachToObject(TopologyObject& boundObject) {
+    object = &boundObject;
+    configurePixels(boundObject.pixelCount);
+}
+
+void Connection::configurePixels(uint16_t objectPixelCount) {
+    if (from == nullptr || to == nullptr) {
+        return;
+    }
+
+    pixelDir = to->topPixel > from->topPixel;
+    fromPixel = from->topPixel + (pixelDir ? 1 : -1);
+    toPixel = to->topPixel - (pixelDir ? 1 : -1);
+
+    if (forcedNumLeds_ > -1) {
+        numLeds = static_cast<uint16_t>(forcedNumLeds_);
+        return;
+    }
+
+    const uint16_t diff = static_cast<uint16_t>(abs(fromPixel - toPixel));
+    uint16_t leds = 0;
+    if (diff > 4) {
+        leds = diff + 1;
+        if (objectPixelCount > 4 && diff >= objectPixelCount - 4) {
+            leds = 0;
+        }
+    }
+
+    if (from->bottomPixel > -1 && (leds == 0 || abs(from->bottomPixel - to->topPixel) < leds)) {
+        pixelDir = to->topPixel > from->bottomPixel;
+        fromPixel = from->bottomPixel + (pixelDir ? 1 : -1);
+        toPixel = to->topPixel - (pixelDir ? 1 : -1);
+        leds = abs(fromPixel - toPixel) + 1;
+    }
+    if (to->bottomPixel > -1 && (leds == 0 || abs(from->topPixel - to->bottomPixel) < leds)) {
+        pixelDir = to->bottomPixel > from->topPixel;
+        fromPixel = from->topPixel + (pixelDir ? 1 : -1);
+        toPixel = to->bottomPixel - (pixelDir ? 1 : -1);
+        leds = abs(fromPixel - toPixel) + 1;
+    }
+    if (from->bottomPixel > -1 && to->bottomPixel > -1 &&
+        (leds == 0 || abs(from->bottomPixel - to->bottomPixel) < leds)) {
+        pixelDir = to->bottomPixel > from->bottomPixel;
+        fromPixel = from->bottomPixel + (pixelDir ? 1 : -1);
+        toPixel = to->bottomPixel - (pixelDir ? 1 : -1);
+        leds = abs(fromPixel - toPixel) + 1;
+    }
+    numLeds = leds;
 }
 
 void Connection::add(RuntimeLight* const light) const {

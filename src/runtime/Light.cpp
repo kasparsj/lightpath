@@ -44,7 +44,7 @@ void Light::nextFrame() {
   bri = list->getBri(this);
   brightness = getBrightness();
   if (list == NULL) {
-    position += lightgraphMotionDistance(speed);
+    position += lightgraphMotionDistance(runtimeContext(), speed);
   }
   else {
     position = list->getPosition(this);
@@ -55,7 +55,8 @@ bool Light::shouldExpire() const {
   if (lifeMillis >= INFINITE_DURATION) {
     return false;
   }
-  return gMillis >= lifeMillis && (list->fadeSpeed == 0 || brightness == 0);
+  const uint8_t fadeSpeed = (list != nullptr) ? list->fadeSpeed : 0;
+  return runtimeContext().nowMillis >= lifeMillis && (fadeSpeed == 0 || brightness == 0);
 }
 
 const Model* Light::getModel() const {

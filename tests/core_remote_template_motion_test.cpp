@@ -5,18 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "../src/Globals.h"
-#include "../src/runtime/EmitParams.h"
-#include "../src/runtime/LightList.h"
-#include "../src/runtime/LightListBuild.h"
-#include "../src/runtime/RemoteSnapshotBuilder.h"
-#include "../src/runtime/RuntimeLight.h"
-#include "../src/runtime/State.h"
-#include "../src/topology/Connection.h"
-#include "../src/topology/Intersection.h"
-#include "../src/topology/Model.h"
-#include "../src/topology/Port.h"
-#include "../src/topology/TopologyObject.h"
+#include "lightgraph/internal/Globals.h"
+#include "lightgraph/internal/runtime.hpp"
+#include "lightgraph/internal/runtime/LightListBuild.h"
+#include "lightgraph/internal/runtime/RemoteSnapshotBuilder.h"
+#include "lightgraph/internal/topology.hpp"
 
 namespace {
 
@@ -363,6 +356,7 @@ int main() {
     LitSpan previousSenderStrip = {};
     LitSpan transferSenderBaseline = {};
     LitSpan transferRemoteBaseline = {};
+    uint16_t transferRemoteAnchor = remoteStripStart;
     size_t expectedTransferFrames = 0;
     size_t checkedTransferFrames = 0;
     bool sawTemplateSend = false;
@@ -444,6 +438,7 @@ int main() {
 
             transferSenderBaseline = senderStrip;
             transferRemoteBaseline = remoteStrip;
+            transferRemoteAnchor = remoteStripStart;
             expectedTransferFrames = senderStrip.size() - 1;
         } else if (sawTemplateSend && checkedTransferFrames < expectedTransferFrames) {
             if (senderStrip.empty()) {
@@ -496,13 +491,18 @@ int main() {
                             describeSpan(remoteStrip) + ", baseline=" + describeSpan(transferRemoteBaseline) +
                             ", step=" + std::to_string(step) + ")");
             }
-            if (remoteStrip.first() != transferRemoteBaseline.first()) {
+            const uint16_t expectedRemoteFirst =
+                transferRemoteBaseline.empty() ? transferRemoteAnchor : transferRemoteBaseline.first();
+            if (remoteStrip.first() != expectedRemoteFirst) {
                 ::sendLightViaESPNow = nullptr;
                 gTemplateTransportContext = nullptr;
                 return fail("Remote strip should keep its ingress edge anchored during handoff (" +
                             describeSpan(remoteStrip) + ", baseline=" + describeSpan(transferRemoteBaseline) + ")");
             }
-            if (remoteStrip.last() != static_cast<uint16_t>(transferRemoteBaseline.last() + step)) {
+            const uint16_t expectedRemoteLast = transferRemoteBaseline.empty()
+                ? static_cast<uint16_t>(transferRemoteAnchor + step - 1)
+                : static_cast<uint16_t>(transferRemoteBaseline.last() + step);
+            if (remoteStrip.last() != expectedRemoteLast) {
                 ::sendLightViaESPNow = nullptr;
                 gTemplateTransportContext = nullptr;
                 return fail("Remote strip growth should advance by exactly 1 pixel per frame (" +

@@ -56,6 +56,7 @@ void LightList::init(uint16_t numLights) {
     if (numLights > 0 && lights == NULL) {
         LG_LOGF("LightList::init failed: OOM for %u lights\n", numLights);
         lightgraphReportAllocationFailure(
+            runtimeContext(),
             LightgraphAllocationFailureSite::LightListArrayAllocation,
             numLights,
             0);
@@ -74,6 +75,7 @@ bool LightList::initContiguousLights(uint16_t numLights) {
     if (contiguousLightStorage == nullptr) {
         LG_LOGF("LightList::initContiguousLights failed: OOM for %u lights\n", numLights);
         lightgraphReportAllocationFailure(
+            runtimeContext(),
             LightgraphAllocationFailureSite::RemoteLightAllocation,
             numLights,
             0);
@@ -132,6 +134,7 @@ RuntimeLight* LightList::createLight(uint16_t i, uint8_t brightness) {
     if (light == NULL) {
         LG_LOGF("LightList::createLight failed: OOM at index %u\n", i);
         lightgraphReportAllocationFailure(
+            runtimeContext(),
             LightgraphAllocationFailureSite::LightListLightAllocation,
             i,
             numLights);
@@ -177,7 +180,7 @@ void LightList::releaseOwnedLight(RuntimeLight*& light) {
 
 void LightList::setDuration(uint32_t durMillis) {
     this->duration = durMillis;
-    this->lifeMillis = MIN(gMillis + durMillis, INFINITE_DURATION);
+    this->lifeMillis = MIN(runtimeContext().nowMillis + durMillis, INFINITE_DURATION);
     for (uint16_t i=0; i<numLights; i++) {
         if ((*this)[i] == 0) continue;
         ((*this)[i])->setDuration(durMillis);
@@ -247,7 +250,7 @@ float LightList::getPosition(RuntimeLight* const light) const {
   if (behaviour != NULL) {
     return behaviour->getPosition(light);
   }
-  return light->position + lightgraphMotionDistance(light->getSpeed());
+  return light->position + lightgraphMotionDistance(runtimeContext(), light->getSpeed());
 }
 
 void LightList::initPosition(uint16_t i, RuntimeLight* const light) const {
@@ -266,7 +269,7 @@ void LightList::initBri(uint16_t i, RuntimeLight* const light) const {
       }
       break;
     case LIST_ORDER_NOISE:
-      light->bri = gPerlinNoise.GetValue(id * 10, i * 100) * FULL_BRIGHTNESS;
+      light->bri = runtimeContext().perlinNoise.GetValue(id * 10, i * 100) * FULL_BRIGHTNESS;
       break;
     default:
       break;
@@ -277,7 +280,7 @@ uint16_t LightList::getBri(const RuntimeLight* light) const {
   if (behaviour != NULL) {
     return behaviour->getBri(light);
   }
-  return light->bri + fadeSpeed;
+  return static_cast<uint16_t>(light->bri + lightgraphMotionDistance(runtimeContext(), fadeSpeed));
 }
 
 void LightList::initLife(uint16_t i, RuntimeLight* const light) const {

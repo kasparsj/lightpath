@@ -10,7 +10,7 @@ Lightgraph provides two header tiers:
   - `lightgraph/types.hpp`
   - `lightgraph/status.hpp`
   - `lightgraph/version.hpp`
-- Source-integration module headers (for in-repo integrations like [MeshLED](https://github.com/kasparsj/meshled)):
+- Build-only source-integration headers (for in-repo integrations like [MeshLED](https://github.com/kasparsj/meshled)):
   - `lightgraph/integration.hpp`
   - `lightgraph/integration/topology.hpp`
   - `lightgraph/integration/runtime.hpp`
@@ -19,9 +19,22 @@ Lightgraph provides two header tiers:
   - `lightgraph/integration/factory.hpp`
   - `lightgraph/integration/debug.hpp`
 
-The stable install/export package installs only the stable API headers.
-Source-integration headers are build-tree only and are intentionally exposed
-through a separate CMake target: `lightgraph::integration`.
+There is also a build-only internal namespace for shared non-stable types used by
+in-repo adapters and tests:
+
+- `lightgraph/internal/*.h`
+- `lightgraph/internal/*.hpp`
+- `lightgraph/internal/runtime/*`
+- `lightgraph/internal/topology/*`
+
+The stable install/export package installs only the stable API headers under
+`lightgraph/*.hpp`. Neither `lightgraph/integration/*` nor `lightgraph/internal/*`
+is installed.
+
+Source-integration headers are intentionally exposed only through the separate
+CMake target `lightgraph::integration`. These headers are self-contained and use
+installed-style include paths; consumers should not add `src/` as a public include
+root or include Lightgraph implementation headers directly.
 
 ## Build And Test
 
@@ -79,7 +92,6 @@ target_link_libraries(your_target PRIVATE lightgraph::lightgraph)
 - `LIGHTGRAPH_CORE_ENABLE_UBSAN` (default: `OFF`)
 - `LIGHTGRAPH_CORE_ENABLE_COVERAGE` (default: `OFF`)
 - `LIGHTGRAPH_CORE_ENABLE_FRACTIONAL_RENDERING` (default: `ON`)
-- `LIGHTGRAPH_CORE_ENABLE_LEGACY_INCLUDE_PATHS` (default: `OFF`)
 
 Non-CMake integrations can disable the same feature by defining
 `LIGHTGRAPH_FRACTIONAL_RENDERING=0` when compiling Lightgraph sources.

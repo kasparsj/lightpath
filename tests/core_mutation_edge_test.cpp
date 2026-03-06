@@ -6,16 +6,12 @@
 #include <utility>
 #include <vector>
 
-#include "../src/runtime/EmitParams.h"
-#include "../src/runtime/LightList.h"
-#include "../src/rendering/Palette.h"
-#include "../src/topology/Connection.h"
-#include "../src/topology/Intersection.h"
-#include "../src/topology/Model.h"
-#include "../src/topology/TopologyObject.h"
-#include "../include/lightgraph/integration/layers.hpp"
-#include "../include/lightgraph/integration/remote_ingress.hpp"
-#include "../include/lightgraph/integration/topology_summary.hpp"
+#include "lightgraph/integration/layers.hpp"
+#include "lightgraph/integration/remote_ingress.hpp"
+#include "lightgraph/integration/topology_summary.hpp"
+#include "lightgraph/internal/rendering.hpp"
+#include "lightgraph/internal/runtime.hpp"
+#include "lightgraph/internal/topology.hpp"
 
 namespace {
 
@@ -459,7 +455,10 @@ int main() {
         snapshotObject.addModel(new Model(1, 7, GROUP1, 32, RoutingStrategy::Deterministic));
     deterministicModel->put(sConnection->fromPort, sConnection->toPort, 99);
 
-    const TopologySnapshot snapshot = snapshotObject.exportSnapshot();
+    TopologySnapshot snapshot;
+    if (!snapshotObject.exportSnapshot(snapshot)) {
+        return fail("exportSnapshot failed on a v3-compatible topology");
+    }
 
     MinimalObject importedObject;
     if (!importedObject.importSnapshot(snapshot, true)) {
@@ -509,7 +508,10 @@ int main() {
         return fail("addExternalPort should allow same endpoint mapping for opposite port roles");
     }
 
-    const TopologySnapshot externalSnapshot = externalSnapshotObject.exportSnapshot();
+    TopologySnapshot externalSnapshot;
+    if (!externalSnapshotObject.exportSnapshot(externalSnapshot)) {
+        return fail("exportSnapshot failed for topology containing external ports");
+    }
     MinimalObject importedExternalObject;
     if (!importedExternalObject.importSnapshot(externalSnapshot, true)) {
         return fail("importSnapshot failed for topology containing external ports");
@@ -617,7 +619,10 @@ int main() {
             return fail("Exact 154 export should retain only live routing weights after import");
         }
 
-        const TopologySnapshot cleaned154Snapshot = imported154Object.exportSnapshot();
+        TopologySnapshot cleaned154Snapshot;
+        if (!imported154Object.exportSnapshot(cleaned154Snapshot)) {
+            return fail("Exact 154 export should remain exportable after import");
+        }
         if (cleaned154Snapshot.models.size() < 2 || cleaned154Snapshot.models[1].weights.size() != 2) {
             return fail("Exact 154 export did not prune stale weights on re-export");
         }
@@ -625,6 +630,62 @@ int main() {
             if (weight.outgoingPortId != 0 && weight.outgoingPortId != 1) {
                 return fail("Exact 154 export re-export retained stale outgoing port weights");
             }
+        }
+    }
+
+    // Unsupported v3 exports should fail explicitly instead of returning an invalid snapshot.
+    {
+        MinimalObject overflowObject;
+        Intersection* overflowA = overflowObject.addIntersection(new Intersection(2, 1, -1, GROUP1));
+        Intersection* overflowB = overflowObject.addIntersection(new Intersection(2, 7, -1, GROUP1));
+        Connection* overflowConnection = overflowObject.addConnection(new Connection(overflowA, overflowB, GROUP1, 5));
+        if (overflowConnection == nullptr || overflowConnection->fromPort == nullptr) {
+            return fail("Failed to create overflow export fixture");
+        }
+        overflowConnection->fromPort->id = 256;
+
+        TopologySnapshot overflowSnapshot;
+        if (overflowObject.exportSnapshot(overflowSnapshot)) {
+            return fail("exportSnapshot should fail when topology exceeds v3 port-id limits");
+        }
+    }
+
+    // Importing topology with replaceModels=false should preserve existing model weights.
+    {
+        MinimalObject sourceObject;
+        Intersection* sourceA = sourceObject.addIntersection(new Intersection(2, 2, -1, GROUP1));
+        Intersection* sourceB = sourceObject.addIntersection(new Intersection(2, 8, -1, GROUP1));
+        Connection* sourceConnection = sourceObject.addConnection(new Connection(sourceA, sourceB, GROUP1, 5));
+        Model* sourceModel =
+            sourceObject.addModel(new Model(0, 7, GROUP1, 16, RoutingStrategy::Deterministic));
+        if (sourceConnection == nullptr || sourceModel == nullptr) {
+            return fail("Failed to create replaceModels=false source fixture");
+        }
+        sourceModel->put(sourceConnection->fromPort, sourceConnection->toPort, 88);
+
+        TopologySnapshot sourceSnapshot;
+        if (!sourceObject.exportSnapshot(sourceSnapshot)) {
+            return fail("Failed to export replaceModels=false source fixture");
+        }
+
+        MinimalObject destinationObject;
+        Intersection* destA = destinationObject.addIntersection(new Intersection(2, 2, -1, GROUP1));
+        Intersection* destB = destinationObject.addIntersection(new Intersection(2, 8, -1, GROUP1));
+        Connection* destConnection = destinationObject.addConnection(new Connection(destA, destB, GROUP1, 5));
+        Model* destinationModel =
+            destinationObject.addModel(new Model(0, 9, GROUP1, 24, RoutingStrategy::Deterministic));
+        if (destConnection == nullptr || destinationModel == nullptr) {
+            return fail("Failed to create replaceModels=false destination fixture");
+        }
+        destinationModel->put(destConnection->fromPort, destConnection->toPort, 77);
+
+        if (!destinationObject.importSnapshot(sourceSnapshot, false)) {
+            return fail("importSnapshot(false) failed on a compatible topology");
+        }
+
+        Model* preservedModel = destinationObject.getModel(0);
+        if (preservedModel == nullptr || preservedModel->weightCount() == 0) {
+            return fail("importSnapshot(false) should preserve existing model weights");
         }
     }
 

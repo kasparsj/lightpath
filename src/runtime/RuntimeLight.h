@@ -67,6 +67,8 @@ class RuntimeLight
     virtual ColorRGB getPixelColor() const;
     uint16_t* getPixels();
     uint16_t getListId() const;
+    LightgraphRuntimeContext& runtimeContext();
+    const LightgraphRuntimeContext& runtimeContext() const;
     void setRenderedPixel(uint16_t pixel);
 #if LIGHTGRAPH_FRACTIONAL_RENDERING
     void setRenderedPixelWeighted(uint16_t pixel, uint8_t weight);

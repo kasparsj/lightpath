@@ -7,6 +7,14 @@
 
 uint16_t RuntimeLight::pixels[CONNECTION_MAX_LEDS] = {0};
 
+LightgraphRuntimeContext& RuntimeLight::runtimeContext() {
+  return (list != nullptr) ? list->runtimeContext() : lightgraphDefaultRuntimeContext();
+}
+
+const LightgraphRuntimeContext& RuntimeLight::runtimeContext() const {
+  return (list != nullptr) ? list->runtimeContext() : lightgraphDefaultRuntimeContext();
+}
+
 void RuntimeLight::resetPixels() {
   pixel1 = -1;
 #if LIGHTGRAPH_FRACTIONAL_RENDERING
@@ -195,7 +203,8 @@ bool RuntimeLight::shouldExpire() const {
   if (list->lifeMillis >= INFINITE_DURATION) {
     return false;
   }
-  return gMillis >= (list->lifeMillis + lifeMillis) && (list->fadeSpeed == 0 || brightness == 0);
+  return runtimeContext().nowMillis >= (list->lifeMillis + lifeMillis) &&
+         (list->fadeSpeed == 0 || brightness == 0);
 }
 
 RuntimeLight* RuntimeLight::getPrev() const {

@@ -8,6 +8,8 @@
 #include "Connection.h"
 #include "Intersection.h"
 
+class TopologyObject;
+
 enum class RoutingStrategy : uint8_t {
     WeightedRandom = 0,
     Deterministic = 1,
@@ -23,7 +25,7 @@ class Model {
     uint8_t defaultW;
     uint8_t emitGroups;
     uint16_t maxLength;
-    std::unordered_map<uint8_t, std::unique_ptr<Weight>> weights;
+    std::unordered_map<uint16_t, std::unique_ptr<Weight>> weights;
     RoutingStrategy routingStrategy = RoutingStrategy::WeightedRandom;
     
     Model(uint8_t id, uint8_t defaultW, uint8_t emitGroups, uint16_t maxLength = 0,
@@ -114,4 +116,9 @@ class Model {
     }
 
     uint16_t getMaxLength() const;
+
+  private:
+    TopologyObject* object_ = nullptr;
+
+    friend class TopologyObject;
 };

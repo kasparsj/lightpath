@@ -151,16 +151,16 @@ Result<int8_t> Engine::emit(const EmitCommand& command) {
 void Engine::update(uint64_t millis) {
     std::lock_guard<std::mutex> lock(impl_->mutex);
     impl_->now_millis = millis;
-    gMillis = static_cast<unsigned long>(millis);
-    impl_->state.autoEmit(gMillis);
+    impl_->object->setNowMillis(static_cast<unsigned long>(millis));
+    impl_->state.autoEmit(impl_->object->nowMillis());
     impl_->state.update();
 }
 
 void Engine::tick(uint64_t delta_millis) {
     std::lock_guard<std::mutex> lock(impl_->mutex);
     impl_->now_millis += delta_millis;
-    gMillis = static_cast<unsigned long>(impl_->now_millis);
-    impl_->state.autoEmit(gMillis);
+    impl_->object->setNowMillis(static_cast<unsigned long>(impl_->now_millis));
+    impl_->state.autoEmit(impl_->object->nowMillis());
     impl_->state.update();
 }
 

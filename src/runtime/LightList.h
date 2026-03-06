@@ -98,6 +98,7 @@ class LightList {
         behaviour = new (std::nothrow) Behaviour(other.behaviour->flags, other.behaviour->colorChangeGroups);
         if (behaviour == nullptr) {
           lightgraphReportAllocationFailure(
+              runtimeContext(),
               LightgraphAllocationFailureSite::StateBehaviourAllocation,
               other.behaviour->flags,
               other.behaviour->colorChangeGroups);
@@ -108,9 +109,10 @@ class LightList {
       
         numLights = other.numLights > 0 ? other.numLights : other.length;
         maxBri = other.maxBri;
-        duration = other.duration;
-        palette = other.palette;
-        reset();
+      duration = other.duration;
+      palette = other.palette;
+      runtimeContext_ = other.runtimeContext_;
+      reset();
     }
 
     LightList& operator=(const LightList&) = delete;
@@ -206,6 +208,15 @@ class LightList {
       return externalBatchForwarded && device != nullptr && externalBatchTargetId == targetId &&
              std::memcmp(externalBatchDevice, device, sizeof(externalBatchDevice)) == 0;
     }
+    void bindRuntimeContext(LightgraphRuntimeContext& context) {
+      runtimeContext_ = &context;
+    }
+    LightgraphRuntimeContext& runtimeContext() {
+      return (runtimeContext_ != nullptr) ? *runtimeContext_ : lightgraphDefaultRuntimeContext();
+    }
+    const LightgraphRuntimeContext& runtimeContext() const {
+      return (runtimeContext_ != nullptr) ? *runtimeContext_ : lightgraphDefaultRuntimeContext();
+    }
 
   private:
 
@@ -223,5 +234,6 @@ class LightList {
     uint16_t allocatedLights = 0;
     void* contiguousLightStorage = nullptr;
     size_t contiguousLightStrideBytes = 0;
+    LightgraphRuntimeContext* runtimeContext_ = nullptr;
 
 };
