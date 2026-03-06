@@ -23,7 +23,7 @@ class TopologyPixels {
 
   private:
     void freeBuffers();
-    bool allocateBuffers();
+    void allocateBuffers();
 
     bool** weightPixels = nullptr;
     bool* interPixels = nullptr;

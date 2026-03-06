@@ -2,7 +2,6 @@
 
 #include <array>
 #include <limits>
-#include <new>
 
 #include "../core/Platform.h"
 #include "../topology/TopologyObject.h"
@@ -31,48 +30,23 @@ void TopologyPixels::freeBuffers() {
   weightRows = 0;
 }
 
-bool TopologyPixels::allocateBuffers() {
+void TopologyPixels::allocateBuffers() {
   const uint16_t pixelCount = object.pixelCount;
   const size_t modelCount = object.models.size();
 
-  interPixels = new (std::nothrow) bool[pixelCount]{false};
-  if (interPixels == nullptr) {
-    LG_LOGF("TopologyPixels: failed to allocate interPixels (%u)\n", pixelCount);
-    return false;
-  }
-
-  connPixels = new (std::nothrow) bool[pixelCount]{false};
-  if (connPixels == nullptr) {
-    LG_LOGF("TopologyPixels: failed to allocate connPixels (%u)\n", pixelCount);
-    freeBuffers();
-    return false;
-  }
+  interPixels = new bool[pixelCount]{false};
+  connPixels = new bool[pixelCount]{false};
 
   weightRows = modelCount;
-  weightPixels = new (std::nothrow) bool*[modelCount]{};
-  if (weightPixels == nullptr) {
-    LG_LOGF("TopologyPixels: failed to allocate weight row table (%u)\n", static_cast<unsigned>(modelCount));
-    freeBuffers();
-    return false;
-  }
+  weightPixels = new bool*[modelCount];
   for (size_t i = 0; i < modelCount; i++) {
-    weightPixels[i] = new (std::nothrow) bool[pixelCount]{false};
-    if (weightPixels[i] == nullptr) {
-      LG_LOGF("TopologyPixels: failed to allocate weight row %u (%u)\n",
-              static_cast<unsigned>(i),
-              pixelCount);
-      freeBuffers();
-      return false;
-    }
+    weightPixels[i] = new bool[pixelCount]{false};
   }
-  return true;
 }
 
 void TopologyPixels::refresh() {
   freeBuffers();
-  if (!allocateBuffers()) {
-    return;
-  }
+  allocateBuffers();
 
   const uint16_t pixelCount = object.pixelCount;
   constexpr size_t kPortIdCount = static_cast<size_t>(std::numeric_limits<uint8_t>::max()) + 1u;
