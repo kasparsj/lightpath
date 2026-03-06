@@ -130,7 +130,19 @@ void Intersection::update(RuntimeLight* const light) const {
                     static_cast<int32_t>(round(light->position * FULL_BRIGHTNESS)),
                     0,
                     FULL_BRIGHTNESS));
-                light->setRenderedPixels(topPixel, adjacentPixel, secondaryWeight);
+                const uint8_t primaryWeight = static_cast<uint8_t>(FULL_BRIGHTNESS - secondaryWeight);
+                const RuntimeLight* previous = light->getPrev();
+                const bool previousFullyOwnsAdjacentPixel =
+                    previous != nullptr &&
+                    previous->owner == port->connection &&
+                    previous->pixel1 == static_cast<int16_t>(adjacentPixel) &&
+                    previous->pixel1Weight > 0 &&
+                    !previous->hasSecondaryPixel();
+                if (secondaryWeight > 0 && previousFullyOwnsAdjacentPixel) {
+                    light->setRenderedPixelWeighted(topPixel, primaryWeight);
+                } else {
+                    light->setRenderedPixels(topPixel, adjacentPixel, secondaryWeight);
+                }
             } else {
                 light->setRenderedPixel(topPixel);
             }

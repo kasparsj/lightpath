@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,8 @@ namespace {
 constexpr uint8_t kPixelDensity = 60;
 constexpr uint8_t kRemoteSlot = 1;
 constexpr uint8_t kExpectedRemoteTargetPortId = 5;
+constexpr uint16_t kSlowRegressionLength = 100;
+constexpr float kSlowRegressionSpeed = 0.05f;
 
 int fail(const std::string& message) {
     std::cerr << "FAIL: " << message << std::endl;
@@ -24,6 +27,82 @@ int fail(const std::string& message) {
 
 bool isNonBlack(const ColorRGB& color) {
     return color.R > 0 || color.G > 0 || color.B > 0;
+}
+
+bool isApproxColor(const ColorRGB& actual, const ColorRGB& expected, uint8_t tolerance = 1) {
+    const auto within = [tolerance](uint8_t a, uint8_t b) {
+        const int delta = static_cast<int>(a) - static_cast<int>(b);
+        return std::abs(delta) <= static_cast<int>(tolerance);
+    };
+    return within(actual.R, expected.R) && within(actual.G, expected.G) && within(actual.B, expected.B);
+}
+
+std::string describeColor(const ColorRGB& color) {
+    return "(" + std::to_string(color.R) + "," + std::to_string(color.G) + "," + std::to_string(color.B) + ")";
+}
+
+std::string describeContributorsAtPixel(LightList* list, uint16_t pixel) {
+    if (list == nullptr) {
+        return "none";
+    }
+
+    std::ostringstream out;
+    bool found = false;
+    for (uint16_t i = 0; i < list->numLights; ++i) {
+        RuntimeLight* light = (*list)[i];
+        if (light == nullptr) {
+            continue;
+        }
+
+        const bool contributesPrimary =
+            light->pixel1 == static_cast<int16_t>(pixel) && light->pixel1Weight > 0;
+        const bool contributesSecondary =
+            light->pixel2 == static_cast<int16_t>(pixel) && light->pixel2Weight > 0;
+        if (!contributesPrimary && !contributesSecondary) {
+            continue;
+        }
+
+        if (found) {
+            out << " | ";
+        }
+        found = true;
+        out << "idx=" << i
+            << " pos=" << light->position
+            << " owner=";
+        if (light->owner == nullptr) {
+            out << "null";
+        } else {
+            Owner* owner = const_cast<Owner*>(light->owner);
+            out << (owner->getType() == Owner::TYPE_INTERSECTION ? "I" : "C");
+        }
+        out << " p1=" << light->pixel1 << "/" << static_cast<int>(light->pixel1Weight)
+            << " p2=" << light->pixel2 << "/" << static_cast<int>(light->pixel2Weight);
+    }
+
+    return found ? out.str() : "none";
+}
+
+ColorRGB scaleColor(ColorRGB color, uint8_t weight) {
+    if (weight == FULL_BRIGHTNESS) {
+        return color;
+    }
+    return ColorRGB(
+        static_cast<uint8_t>((static_cast<uint16_t>(color.R) * weight + 127u) / 255u),
+        static_cast<uint8_t>((static_cast<uint16_t>(color.G) * weight + 127u) / 255u),
+        static_cast<uint8_t>((static_cast<uint16_t>(color.B) * weight + 127u) / 255u));
+}
+
+ColorRGB accumulateColor(ColorRGB total, const ColorRGB& contribution) {
+    total.R = static_cast<uint8_t>(std::min<uint16_t>(
+        FULL_BRIGHTNESS,
+        static_cast<uint16_t>(total.R) + static_cast<uint16_t>(contribution.R)));
+    total.G = static_cast<uint8_t>(std::min<uint16_t>(
+        FULL_BRIGHTNESS,
+        static_cast<uint16_t>(total.G) + static_cast<uint16_t>(contribution.G)));
+    total.B = static_cast<uint8_t>(std::min<uint16_t>(
+        FULL_BRIGHTNESS,
+        static_cast<uint16_t>(total.B) + static_cast<uint16_t>(contribution.B)));
+    return total;
 }
 
 struct LitSpan {
@@ -70,6 +149,89 @@ bool isContiguous(const LitSpan& span) {
         }
     }
     return true;
+}
+
+uint16_t colorEnergy(const ColorRGB& color) {
+    return static_cast<uint16_t>(color.R) + static_cast<uint16_t>(color.G) + static_cast<uint16_t>(color.B);
+}
+
+bool findDominantContributionAtPixel(LightList* list, uint16_t pixel, ColorRGB& contributionOut) {
+    if (list == nullptr) {
+        return false;
+    }
+
+    bool found = false;
+    uint16_t bestEnergy = 0;
+    for (uint16_t i = 0; i < list->numLights; ++i) {
+        RuntimeLight* light = (*list)[i];
+        if (light == nullptr) {
+            continue;
+        }
+
+        if (light->pixel1 == static_cast<int16_t>(pixel)) {
+            ColorRGB contribution = light->getPixelColorAt(light->pixel1);
+#if LIGHTGRAPH_FRACTIONAL_RENDERING
+            contribution = scaleColor(contribution, light->pixel1Weight);
+#endif
+            const uint16_t energy = colorEnergy(contribution);
+            if (!found || energy > bestEnergy) {
+                found = true;
+                bestEnergy = energy;
+                contributionOut = contribution;
+            }
+        }
+#if LIGHTGRAPH_FRACTIONAL_RENDERING
+        if (light->pixel2 == static_cast<int16_t>(pixel) && light->pixel2Weight > 0) {
+            ColorRGB contribution = light->getPixelColorAt(light->pixel2);
+            contribution = scaleColor(contribution, light->pixel2Weight);
+            const uint16_t energy = colorEnergy(contribution);
+            if (!found || energy > bestEnergy) {
+                found = true;
+                bestEnergy = energy;
+                contributionOut = contribution;
+            }
+        }
+#endif
+    }
+
+    return found;
+}
+
+bool findAccumulatedContributionAtPixel(LightList* list, uint16_t pixel, ColorRGB& contributionOut) {
+    if (list == nullptr) {
+        return false;
+    }
+
+    bool found = false;
+    ColorRGB total(0, 0, 0);
+    for (uint16_t i = 0; i < list->numLights; ++i) {
+        RuntimeLight* light = (*list)[i];
+        if (light == nullptr) {
+            continue;
+        }
+
+        if (light->pixel1 == static_cast<int16_t>(pixel)) {
+            ColorRGB contribution = light->getPixelColorAt(light->pixel1);
+#if LIGHTGRAPH_FRACTIONAL_RENDERING
+            contribution = scaleColor(contribution, light->pixel1Weight);
+#endif
+            total = accumulateColor(total, contribution);
+            found = true;
+        }
+#if LIGHTGRAPH_FRACTIONAL_RENDERING
+        if (light->pixel2 == static_cast<int16_t>(pixel) && light->pixel2Weight > 0) {
+            ColorRGB contribution = light->getPixelColorAt(light->pixel2);
+            contribution = scaleColor(contribution, light->pixel2Weight);
+            total = accumulateColor(total, contribution);
+            found = true;
+        }
+#endif
+    }
+
+    if (found) {
+        contributionOut = total;
+    }
+    return found;
 }
 
 class DeviceObject : public TopologyObject {
@@ -525,6 +687,260 @@ int main() {
     }
     if (expectedTransferFrames == 0 || checkedTransferFrames != expectedTransferFrames) {
         return fail("Template handoff did not complete the expected per-frame tail transfer");
+    }
+
+    {
+        gMillis = 0;
+        LightList::nextId = 0;
+        Intersection::nextId = 0;
+        Port::setNextId(0);
+
+        std::unique_ptr<DeviceFixture> slowRemote = makeDevice154Fixture();
+
+        Intersection::nextId = 0;
+        std::unique_ptr<DeviceFixture> slowSender = makeDevice150Fixture();
+
+        TemplateTransportContext slowTransport = {};
+        slowTransport.remoteState = &slowRemote->state;
+        slowTransport.remoteTargetPort = static_cast<InternalPort*>(slowRemote->conn02->toPort);
+
+        ::sendLightViaESPNow = sendLightViaESPNowTemplateHook;
+        gTemplateTransportContext = &slowTransport;
+
+        EmitParams slowParams(0, kSlowRegressionSpeed, 0x204830);
+        slowParams.setLength(kSlowRegressionLength);
+        slowParams.duration = INFINITE_DURATION;
+        slowParams.emitGroups = GROUP1;
+        slowParams.order = LIST_ORDER_SEQUENTIAL;
+        slowParams.head = LIST_HEAD_FRONT;
+        slowParams.linked = true;
+        slowParams.maxBri = 96;
+        slowParams.behaviourFlags |= B_EMIT_FROM_CONN;
+        slowParams.from = 2;
+
+        const int8_t slowListIndex = slowSender->state.emit(slowParams);
+        if (slowListIndex < 0) {
+            ::sendLightViaESPNow = nullptr;
+            gTemplateTransportContext = nullptr;
+            return fail("Slow template regression failed to emit sender-side list");
+        }
+
+        LightList* slowSenderList = slowSender->state.lightLists[slowListIndex];
+        if (slowSenderList == nullptr) {
+            ::sendLightViaESPNow = nullptr;
+            gTemplateTransportContext = nullptr;
+            return fail("Slow template regression sender list was not retained in state");
+        }
+
+        bool sawSlowTemplateSend = false;
+        const uint16_t senderConnectionPixel = slowSender->conn12->getPixel(slowSender->conn12->numLeds - 1);
+        const uint16_t remoteConnectionPixel = slowRemote->conn02->getPixel(slowRemote->conn02->numLeds - 1);
+        size_t checkedSenderConnectionFrames = 0;
+        size_t checkedSenderIntersectionFrames = 0;
+        size_t checkedRemoteConnectionFrames = 0;
+        size_t checkedRemoteIntersectionFrames = 0;
+        const size_t framesPerPixel = static_cast<size_t>(std::ceil(1.0f / slowParams.getSpeed()));
+        const size_t slowMaxFrames =
+            (static_cast<size_t>(slowSender->conn12->numLeds) + static_cast<size_t>(slowSenderList->length) + 12) *
+            framesPerPixel;
+
+        for (size_t frame = 0; frame < slowMaxFrames; ++frame) {
+            gMillis += EmitParams::frameMs();
+            slowSender->state.update();
+            slowRemote->state.update();
+
+            if (!sawSlowTemplateSend && slowTransport.templateSendCount == 1) {
+                sawSlowTemplateSend = true;
+            }
+            if (!sawSlowTemplateSend) {
+                continue;
+            }
+
+            ColorRGB expectedSenderConnection = {};
+            if (findAccumulatedContributionAtPixel(slowSenderList, senderConnectionPixel, expectedSenderConnection)) {
+                const ColorRGB actual = slowSender->state.getPixel(senderConnectionPixel);
+                if (!isApproxColor(actual, expectedSenderConnection, 1)) {
+                    ::sendLightViaESPNow = nullptr;
+                    gTemplateTransportContext = nullptr;
+                    return fail("Sender connection pixel should match the accumulated list contribution during slow template handoff"
+                                " (actual=" + describeColor(actual) + ", expected=" + describeColor(expectedSenderConnection) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                checkedSenderConnectionFrames++;
+            }
+
+            ColorRGB expectedSenderIntersection = {};
+            if (findDominantContributionAtPixel(slowSenderList, slowSender->inter2->topPixel,
+                                                expectedSenderIntersection)) {
+                const ColorRGB actual = slowSender->state.getPixel(slowSender->inter2->topPixel);
+                if (!isApproxColor(actual, expectedSenderIntersection, 1)) {
+                    ::sendLightViaESPNow = nullptr;
+                    gTemplateTransportContext = nullptr;
+                    return fail("Sender exit intersection should match the dominant single-light contribution during slow template handoff"
+                                " (actual=" + describeColor(actual) + ", expected=" + describeColor(expectedSenderIntersection) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                checkedSenderIntersectionFrames++;
+            }
+
+            LightList* slowRemoteList = slowRemote->state.lightLists[kRemoteSlot];
+            ColorRGB expectedRemoteConnection = {};
+            if (findAccumulatedContributionAtPixel(slowRemoteList, remoteConnectionPixel, expectedRemoteConnection)) {
+                const ColorRGB actual = slowRemote->state.getPixel(remoteConnectionPixel);
+                if (!isApproxColor(actual, expectedRemoteConnection, 1)) {
+                    ::sendLightViaESPNow = nullptr;
+                    gTemplateTransportContext = nullptr;
+                    return fail("Remote connection pixel should match the accumulated list contribution during slow template handoff"
+                                " (actual=" + describeColor(actual) + ", expected=" + describeColor(expectedRemoteConnection) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                checkedRemoteConnectionFrames++;
+            }
+
+            ColorRGB expectedRemoteIntersection = {};
+            if (findDominantContributionAtPixel(slowRemoteList, slowRemote->inter2->topPixel,
+                                                expectedRemoteIntersection)) {
+                const ColorRGB actual = slowRemote->state.getPixel(slowRemote->inter2->topPixel);
+                if (!isApproxColor(actual, expectedRemoteIntersection, 1)) {
+                    ::sendLightViaESPNow = nullptr;
+                    gTemplateTransportContext = nullptr;
+                    return fail("Remote ingress intersection should match the dominant single-light contribution during slow template handoff"
+                                " (actual=" + describeColor(actual) + ", expected=" + describeColor(expectedRemoteIntersection) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                checkedRemoteIntersectionFrames++;
+            }
+        }
+
+        ::sendLightViaESPNow = nullptr;
+        gTemplateTransportContext = nullptr;
+
+        if (!sawSlowTemplateSend) {
+            return fail("Slow template regression never reached the remote-port template handoff");
+        }
+        if (slowTransport.templateSendCount != 1) {
+            return fail("Slow template regression should emit exactly one template batch send");
+        }
+        if (checkedSenderConnectionFrames == 0 || checkedSenderIntersectionFrames == 0 ||
+            checkedRemoteConnectionFrames == 0 || checkedRemoteIntersectionFrames == 0) {
+            return fail("Slow template regression did not observe both connection pixels and both intersection pixels during handoff");
+        }
+    }
+
+    {
+        gMillis = 0;
+        LightList::nextId = 0;
+        Intersection::nextId = 0;
+        Port::setNextId(0);
+
+        std::unique_ptr<DeviceFixture> internal = makeDevice150Fixture();
+        internal->primaryModel->put(internal->externalPort, internal->conn12->toPort, 0);
+        internal->primaryModel->put(internal->conn02->toPort, internal->conn12->toPort, 100);
+
+        EmitParams internalParams(0, kSlowRegressionSpeed, 0x204830);
+        internalParams.setLength(kSlowRegressionLength);
+        internalParams.duration = INFINITE_DURATION;
+        internalParams.emitGroups = GROUP1;
+        internalParams.order = LIST_ORDER_SEQUENTIAL;
+        internalParams.head = LIST_HEAD_FRONT;
+        internalParams.linked = true;
+        internalParams.maxBri = 96;
+        internalParams.behaviourFlags |= B_EMIT_FROM_CONN;
+        internalParams.from = 2;
+
+        const int8_t internalListIndex = internal->state.emit(internalParams);
+        if (internalListIndex < 0) {
+            return fail("Slow internal regression failed to emit sender-side list");
+        }
+
+        LightList* internalList = internal->state.lightLists[internalListIndex];
+        if (internalList == nullptr || internalList->numLights == 0 || (*internalList)[0] == nullptr) {
+            return fail("Slow internal regression did not materialize the sequential list");
+        }
+
+        const uint16_t incomingPixel = internal->conn12->getPixel(internal->conn12->numLeds - 1);
+        const uint16_t intersectionPixel = internal->inter2->topPixel;
+        const uint16_t outgoingPixel = internal->conn02->getPixel(internal->conn02->numLeds - 1);
+        const size_t internalFramesPerPixel = static_cast<size_t>(std::ceil(1.0f / internalParams.getSpeed()));
+        const size_t internalMaxFrames =
+            (static_cast<size_t>(internal->conn12->numLeds) + static_cast<size_t>(internal->conn02->numLeds) +
+             static_cast<size_t>(internalList->length) + 4) *
+            internalFramesPerPixel;
+        const ColorRGB expectedBodyColor = scaleColor(ColorRGB(0x204830), internalParams.maxBri);
+        const size_t requiredStableBodyFrames = internalFramesPerPixel;
+
+        size_t incomingObservedFrames = 0;
+        size_t intersectionObservedFrames = 0;
+        size_t outgoingObservedFrames = 0;
+        size_t stableBodyFrames = 0;
+        bool sawStableBodyStart = false;
+
+        for (size_t frame = 0; frame < internalMaxFrames; ++frame) {
+            gMillis += EmitParams::frameMs();
+            internal->state.update();
+
+            const ColorRGB incomingActual = internal->state.getPixel(incomingPixel);
+            const ColorRGB intersectionActual = internal->state.getPixel(intersectionPixel);
+            const ColorRGB outgoingActual = internal->state.getPixel(outgoingPixel);
+
+            ColorRGB expectedIncoming = {};
+            if (findAccumulatedContributionAtPixel(internalList, incomingPixel, expectedIncoming)) {
+                if (!isApproxColor(incomingActual, expectedIncoming, 1)) {
+                    return fail("Slow internal regression incoming connection pixel should match the accumulated list contribution"
+                                " (actual=" + describeColor(incomingActual) + ", expected=" + describeColor(expectedIncoming) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                incomingObservedFrames++;
+            }
+
+            ColorRGB expectedIntersection = {};
+            if (findAccumulatedContributionAtPixel(internalList, intersectionPixel, expectedIntersection)) {
+                if (!isApproxColor(intersectionActual, expectedIntersection, 1)) {
+                    return fail("Slow internal regression intersection pixel should match the accumulated list contribution"
+                                " (actual=" + describeColor(intersectionActual) + ", expected=" + describeColor(expectedIntersection) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                intersectionObservedFrames++;
+            }
+
+            ColorRGB expectedOutgoing = {};
+            if (findAccumulatedContributionAtPixel(internalList, outgoingPixel, expectedOutgoing)) {
+                if (!isApproxColor(outgoingActual, expectedOutgoing, 1)) {
+                    return fail("Slow internal regression outgoing connection pixel should match the accumulated list contribution"
+                                " (actual=" + describeColor(outgoingActual) + ", expected=" + describeColor(expectedOutgoing) +
+                                ", frame=" + std::to_string(frame) + ")");
+                }
+                outgoingObservedFrames++;
+            }
+
+            const bool bodyPlateauFrame =
+                isApproxColor(incomingActual, expectedBodyColor, 1) &&
+                isApproxColor(intersectionActual, expectedBodyColor, 1) &&
+                isApproxColor(outgoingActual, expectedBodyColor, 1);
+            if (bodyPlateauFrame) {
+                sawStableBodyStart = true;
+                stableBodyFrames++;
+            } else if (sawStableBodyStart && stableBodyFrames < requiredStableBodyFrames) {
+                return fail("Slow internal regression body plateau should stay stable across incoming/intersection/outgoing pixels"
+                            " (incoming=" + describeColor(incomingActual) +
+                            ", intersection=" + describeColor(intersectionActual) +
+                            ", outgoing=" + describeColor(outgoingActual) +
+                            ", expected=" + describeColor(expectedBodyColor) +
+                            ", incoming_contributors=" + describeContributorsAtPixel(internalList, incomingPixel) +
+                            ", intersection_contributors=" + describeContributorsAtPixel(internalList, intersectionPixel) +
+                            ", outgoing_contributors=" + describeContributorsAtPixel(internalList, outgoingPixel) +
+                            ", frame=" + std::to_string(frame) + ")");
+            } else if (!sawStableBodyStart) {
+                stableBodyFrames = 0;
+            }
+        }
+
+        if (incomingObservedFrames == 0 || intersectionObservedFrames == 0 || outgoingObservedFrames == 0) {
+            return fail("Slow internal regression did not observe all three handoff pixels");
+        }
+        if (stableBodyFrames < requiredStableBodyFrames) {
+            return fail("Slow internal regression never observed a stable body plateau across the watched pixels");
+        }
     }
 
     {

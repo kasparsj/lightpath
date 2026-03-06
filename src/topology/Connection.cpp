@@ -9,6 +9,20 @@
 
 namespace {
 
+bool isDestinationIntersectionFullyOwnedByPreviousLight(const RuntimeLight* light,
+                                                        const Intersection* destination) {
+  if (light == nullptr || destination == nullptr) {
+    return false;
+  }
+
+  const RuntimeLight* previous = light->getPrev();
+  return previous != nullptr &&
+         previous->owner == destination &&
+         previous->pixel1 == static_cast<int16_t>(destination->topPixel) &&
+         previous->pixel1Weight > 0 &&
+         !previous->hasSecondaryPixel();
+}
+
 bool hasAvailablePortSlot(const Intersection* intersection) {
   if (intersection == nullptr) {
     return false;
@@ -203,9 +217,14 @@ bool Connection::render(RuntimeLight* const light) const {
                 static_cast<int32_t>(round(frac * FULL_BRIGHTNESS)),
                 0,
                 FULL_BRIGHTNESS));
+            const uint8_t primaryWeight = static_cast<uint8_t>(FULL_BRIGHTNESS - secondaryWeight);
             const Intersection* destination = reverseDirection ? from : to;
             if (secondaryWeight == 0 || destination == nullptr) {
                 light->setRenderedPixel(primaryPixel);
+                return true;
+            }
+            if (isDestinationIntersectionFullyOwnedByPreviousLight(light, destination)) {
+                light->setRenderedPixelWeighted(primaryPixel, primaryWeight);
                 return true;
             }
             light->setRenderedPixels(primaryPixel, destination->topPixel, secondaryWeight);

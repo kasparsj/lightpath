@@ -33,6 +33,13 @@ uint8_t clampReservedTailSlots(uint8_t slots) {
     return slots;
 }
 
+ColorRGB scaleColorByWeight(const ColorRGB& color, uint8_t weight) {
+    return ColorRGB(
+        static_cast<uint8_t>((static_cast<uint16_t>(color.R) * weight + 127u) / 255u),
+        static_cast<uint8_t>((static_cast<uint16_t>(color.G) * weight + 127u) / 255u),
+        static_cast<uint8_t>((static_cast<uint16_t>(color.B) * weight + 127u) / 255u));
+}
+
 } // namespace
 
 State::State(TopologyObject& obj)
@@ -377,7 +384,7 @@ void State::setPixelsWeighted(uint16_t pixel,
         return;
     }
 
-    ColorRGB weightedColor = color.dim(weight);
+    ColorRGB weightedColor = scaleColorByWeight(color, weight);
     if (weightedColor.R == 0 && weightedColor.G == 0 && weightedColor.B == 0) {
         return;
     }
