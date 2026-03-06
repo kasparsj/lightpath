@@ -484,7 +484,8 @@ int main() {
 
         preForwardIntersection->update(firstLight);
         if (gExternalSendRecords.size() != 1) {
-            return fail("Early sequential batch trigger should dedupe repeated intersection renders");
+            return fail(
+                "Early sequential batch trigger should dedupe repeated intersection renders");
         }
 
         firstLight->owner = preForwardIntersection;
