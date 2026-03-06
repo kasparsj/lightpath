@@ -7,6 +7,11 @@
 #include <new>
 #include <vector>
 
+#if defined(ARDUINO_ARCH_ESP32)
+#include <Arduino.h>
+#include <esp_heap_caps.h>
+#endif
+
 #include "Behaviour.h"
 #include "EmitParams.h"
 #include "Light.h"
@@ -80,6 +85,36 @@ struct SequentialSnapshotDescriptor {
 
 inline uint8_t sanitizePixelDensity(uint8_t density) {
   return density > 0 ? density : 1;
+}
+
+inline bool hasRemoteSnapshotHeapBudget(uint16_t scaledNumLights,
+                                        size_t paletteStopCount,
+                                        LightgraphAllocationFailureSite failureSite) {
+#if defined(ARDUINO_ARCH_ESP32)
+  constexpr uint32_t kHeapGuardBytes = 4096U;
+  constexpr uint32_t kAllocatorOverheadBytes = 1024U;
+  constexpr uint32_t kLargestBlockGuardBytes = static_cast<uint32_t>(sizeof(Light)) + 128U;
+  const uint32_t lightBytes = static_cast<uint32_t>(scaledNumLights) *
+                              static_cast<uint32_t>(sizeof(Light) + sizeof(RuntimeLight*) + sizeof(ColorRGB));
+  const uint32_t paletteBytes = static_cast<uint32_t>(paletteStopCount) *
+                                static_cast<uint32_t>(sizeof(int64_t) + sizeof(float));
+  const uint32_t estimatedBytes = static_cast<uint32_t>(sizeof(LightList) + sizeof(Palette)) +
+                                  lightBytes + paletteBytes + kAllocatorOverheadBytes;
+  const uint32_t freeHeap = ESP.getFreeHeap();
+  const uint32_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+  if (freeHeap < estimatedBytes + kHeapGuardBytes || largestBlock < kLargestBlockGuardBytes) {
+    lightgraphReportAllocationFailure(
+        failureSite,
+        scaledNumLights,
+        static_cast<uint16_t>(std::min<uint32_t>(estimatedBytes, std::numeric_limits<uint16_t>::max())));
+    return false;
+  }
+#else
+  (void) scaledNumLights;
+  (void) paletteStopCount;
+  (void) failureSite;
+#endif
+  return true;
 }
 
 inline uint16_t scaleLengthForDensity(uint16_t sourceLength, uint8_t senderPixelDensity, uint8_t receiverPixelDensity) {
@@ -160,43 +195,64 @@ inline void applyLightListBehaviour(LightList* lightList, bool hasBehaviour, uin
 }
 
 inline LightList* buildSingleLightSnapshot(const SingleSnapshotDescriptor& descriptor) {
-  LightList* list = new (std::nothrow) LightList();
-  if (list == nullptr) {
-    lightgraphReportAllocationFailure(
-        LightgraphAllocationFailureSite::RemoteListAllocation,
-        1,
-        0);
+  if (!hasRemoteSnapshotHeapBudget(1, 0, LightgraphAllocationFailureSite::RemoteLightAllocation)) {
     return nullptr;
   }
-  list->order = LIST_ORDER_RANDOM;
-  list->linked = false;
-  list->speed = descriptor.speed;
-  list->lifeMillis = descriptor.lifeMillis;
-  list->length = 1;
-  list->visible = true;
-  list->editable = false;
-  list->emitter = nullptr;
-  list->model = descriptor.model;
-  applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
-  list->init(1);
-  if (list->numLights == 0 || list->lights == nullptr) {
-    delete list;
-    return nullptr;
-  }
-  list->numEmitted = 1;
 
-  Light* light = new (std::nothrow) Light(list, descriptor.speed, descriptor.lifeMillis, 0, descriptor.brightness);
-  if (light == nullptr) {
+  LightList* list = nullptr;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  try {
+#endif
+    list = new (std::nothrow) LightList();
+    if (list == nullptr) {
+      lightgraphReportAllocationFailure(
+          LightgraphAllocationFailureSite::RemoteListAllocation,
+          1,
+          0);
+      return nullptr;
+    }
+    list->order = LIST_ORDER_RANDOM;
+    list->linked = false;
+    list->speed = descriptor.speed;
+    list->lifeMillis = descriptor.lifeMillis;
+    list->length = 1;
+    list->visible = true;
+    list->editable = false;
+    list->emitter = nullptr;
+    list->model = descriptor.model;
+    applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
+    list->init(1);
+    if (list->numLights == 0 || list->lights == nullptr) {
+      delete list;
+      return nullptr;
+    }
+    list->numEmitted = 1;
+
+    Light* light = new (std::nothrow) Light(list, descriptor.speed, descriptor.lifeMillis, 0, descriptor.brightness);
+    if (light == nullptr) {
+      lightgraphReportAllocationFailure(
+          LightgraphAllocationFailureSite::RemoteLightAllocation,
+          0,
+          1);
+      delete list;
+      return nullptr;
+    }
+    light->setColor(ColorRGB(descriptor.colorR, descriptor.colorG, descriptor.colorB));
+    (*list)[0] = light;
+    return list;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  } catch (const std::bad_alloc&) {
+    delete list;
     lightgraphReportAllocationFailure(
         LightgraphAllocationFailureSite::RemoteLightAllocation,
         0,
         1);
+    return nullptr;
+  } catch (...) {
     delete list;
     return nullptr;
   }
-  light->setColor(ColorRGB(descriptor.colorR, descriptor.colorG, descriptor.colorB));
-  (*list)[0] = light;
-  return list;
+#endif
 }
 
 inline LightList* buildTemplateSnapshot(const TemplateSnapshotDescriptor& descriptor,
@@ -218,6 +274,10 @@ inline LightList* buildTemplateSnapshot(const TemplateSnapshotDescriptor& descri
   if (scaledLength < scaledNumLights) {
     scaledLength = scaledNumLights;
   }
+  if (!hasRemoteSnapshotHeapBudget(
+          scaledNumLights, colors.size(), LightgraphAllocationFailureSite::RemoteLightAllocation)) {
+    return nullptr;
+  }
 
   uint16_t offsetLength = scaledLength;
   if (offsetLength > 32767) {
@@ -227,79 +287,96 @@ inline LightList* buildTemplateSnapshot(const TemplateSnapshotDescriptor& descri
   const float scaledSpeed = scaleSpeedForDensity(
       descriptor.speed, descriptor.senderPixelDensity, descriptor.receiverPixelDensity);
 
-  LightList* list = new (std::nothrow) LightList();
-  if (list == nullptr) {
-    lightgraphReportAllocationFailure(
-        LightgraphAllocationFailureSite::RemoteListAllocation,
-        scaledNumLights,
-        scaledLength);
-    return nullptr;
-  }
-  list->order = LIST_ORDER_SEQUENTIAL;
-  list->head = (descriptor.head <= LIST_HEAD_BACK) ? static_cast<ListHead>(descriptor.head) : LIST_HEAD_FRONT;
-  list->linked = descriptor.linked;
-  list->length = scaledLength;
-  list->visible = true;
-  list->editable = false;
-  list->emitter = nullptr;
-  list->duration = descriptor.duration;
-  list->minBri = descriptor.minBri;
-  list->maxBri = descriptor.maxBri;
-  list->blendMode =
-      (descriptor.blendMode <= BLEND_PIN_LIGHT) ? static_cast<BlendMode>(descriptor.blendMode) : BLEND_NORMAL;
-  list->setSpeed(scaledSpeed, descriptor.easeIndex);
-  list->setFade(descriptor.fadeSpeed, descriptor.fadeThresh, descriptor.fadeEaseIndex);
-  list->lifeMillis = descriptor.lifeMillis;
-  applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
-  list->model = descriptor.model;
-
-  list->init(scaledNumLights);
-  if (list->numLights != scaledNumLights || list->lights == nullptr) {
-    delete list;
-    return nullptr;
-  }
-  const uint16_t numTrail =
-      (scaledLength > list->numLights) ? static_cast<uint16_t>(scaledLength - list->numLights) : 0;
-  list->setLeadTrail(numTrail);
-
-  for (uint16_t i = 0; i < list->numLights; i++) {
-    const uint16_t lightIdx = list->linked ? i : 0;
-    const float bri = static_cast<float>(list->maxBri) * list->getBriMult(i);
-    const uint8_t clampedBri = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, bri)));
-    Light* createdLight = new (std::nothrow) Light(list, list->speed, list->lifeMillis, lightIdx, clampedBri);
-    if (createdLight == nullptr) {
+  LightList* list = nullptr;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  try {
+#endif
+    list = new (std::nothrow) LightList();
+    if (list == nullptr) {
       lightgraphReportAllocationFailure(
-          LightgraphAllocationFailureSite::RemoteLightAllocation,
-          i,
-          list->numLights);
+          LightgraphAllocationFailureSite::RemoteListAllocation,
+          scaledNumLights,
+          scaledLength);
+      return nullptr;
+    }
+    list->order = LIST_ORDER_SEQUENTIAL;
+    list->head = (descriptor.head <= LIST_HEAD_BACK) ? static_cast<ListHead>(descriptor.head) : LIST_HEAD_FRONT;
+    list->linked = descriptor.linked;
+    list->length = scaledLength;
+    list->visible = true;
+    list->editable = false;
+    list->emitter = nullptr;
+    list->duration = descriptor.duration;
+    list->minBri = descriptor.minBri;
+    list->maxBri = descriptor.maxBri;
+    list->blendMode =
+        (descriptor.blendMode <= BLEND_PIN_LIGHT) ? static_cast<BlendMode>(descriptor.blendMode) : BLEND_NORMAL;
+    list->setSpeed(scaledSpeed, descriptor.easeIndex);
+    list->setFade(descriptor.fadeSpeed, descriptor.fadeThresh, descriptor.fadeEaseIndex);
+    list->lifeMillis = descriptor.lifeMillis;
+    applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
+    list->model = descriptor.model;
+
+    list->init(scaledNumLights);
+    if (list->numLights != scaledNumLights || list->lights == nullptr) {
       delete list;
       return nullptr;
     }
-    RuntimeLight* created = createdLight;
-    (*list)[i] = created;
+    const uint16_t numTrail =
+        (scaledLength > list->numLights) ? static_cast<uint16_t>(scaledLength - list->numLights) : 0;
+    list->setLeadTrail(numTrail);
 
-    float position = (list->speed != 0.0f) ? static_cast<float>(i) * -1.0f
-                                           : static_cast<float>(list->numLights - 1 - i);
-    position += static_cast<float>(scaledPositionOffset);
-    created->position = position;
+    for (uint16_t i = 0; i < list->numLights; i++) {
+      const uint16_t lightIdx = list->linked ? i : 0;
+      const float bri = static_cast<float>(list->maxBri) * list->getBriMult(i);
+      const uint8_t clampedBri = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, bri)));
+      Light* createdLight = new (std::nothrow) Light(list, list->speed, list->lifeMillis, lightIdx, clampedBri);
+      if (createdLight == nullptr) {
+        lightgraphReportAllocationFailure(
+            LightgraphAllocationFailureSite::RemoteLightAllocation,
+            i,
+            list->numLights);
+        delete list;
+        return nullptr;
+      }
+      RuntimeLight* created = createdLight;
+      (*list)[i] = created;
 
-    if (list->order == LIST_ORDER_SEQUENTIAL && list->speed > 0.0f) {
-      const uint32_t delayFrames = static_cast<uint32_t>(std::ceil((1.0f / list->speed) * static_cast<float>(i)));
-      created->lifeMillis = addLifeDelayClamped(
-          list->lifeMillis, static_cast<uint32_t>(delayFrames * EmitParams::frameMs()));
-    } else {
-      created->lifeMillis = list->lifeMillis;
+      float position = (list->speed != 0.0f) ? static_cast<float>(i) * -1.0f
+                                             : static_cast<float>(list->numLights - 1 - i);
+      position += static_cast<float>(scaledPositionOffset);
+      created->position = position;
+
+      if (list->order == LIST_ORDER_SEQUENTIAL && list->speed > 0.0f) {
+        const uint32_t delayFrames = static_cast<uint32_t>(std::ceil((1.0f / list->speed) * static_cast<float>(i)));
+        created->lifeMillis = addLifeDelayClamped(
+            list->lifeMillis, static_cast<uint32_t>(delayFrames * EmitParams::frameMs()));
+      } else {
+        created->lifeMillis = list->lifeMillis;
+      }
     }
-  }
 
-  Palette palette(colors, positions);
-  palette.setColorRule(descriptor.colorRule);
-  palette.setInterMode(descriptor.interMode);
-  palette.setWrapMode(descriptor.wrapMode);
-  palette.setSegmentation((descriptor.segmentation >= 0.0f) ? descriptor.segmentation : 0.0f);
-  list->setPalette(palette);
-  list->numEmitted = list->numLights;
-  return list;
+    Palette palette(colors, positions);
+    palette.setColorRule(descriptor.colorRule);
+    palette.setInterMode(descriptor.interMode);
+    palette.setWrapMode(descriptor.wrapMode);
+    palette.setSegmentation((descriptor.segmentation >= 0.0f) ? descriptor.segmentation : 0.0f);
+    list->setPalette(palette);
+    list->numEmitted = list->numLights;
+    return list;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  } catch (const std::bad_alloc&) {
+    delete list;
+    lightgraphReportAllocationFailure(
+        LightgraphAllocationFailureSite::RemoteLightAllocation,
+        scaledNumLights,
+        scaledLength);
+    return nullptr;
+  } catch (...) {
+    delete list;
+    return nullptr;
+  }
+#endif
 }
 
 inline LightList* buildSequentialSnapshot(const SequentialSnapshotDescriptor& descriptor,
@@ -325,6 +402,10 @@ inline LightList* buildSequentialSnapshot(const SequentialSnapshotDescriptor& de
   if (scaledLength < scaledNumLights) {
     scaledLength = scaledNumLights;
   }
+  if (!hasRemoteSnapshotHeapBudget(
+          scaledNumLights, 0, LightgraphAllocationFailureSite::RemoteLightAllocation)) {
+    return nullptr;
+  }
 
   uint16_t offsetLength = scaledLength;
   if (offsetLength > 32767) {
@@ -332,70 +413,87 @@ inline LightList* buildSequentialSnapshot(const SequentialSnapshotDescriptor& de
   }
   const int16_t scaledPositionOffset = -static_cast<int16_t>(offsetLength);
 
-  LightList* list = new (std::nothrow) LightList();
-  if (list == nullptr) {
-    lightgraphReportAllocationFailure(
-        LightgraphAllocationFailureSite::RemoteListAllocation,
-        scaledNumLights,
-        scaledLength);
-    return nullptr;
-  }
-  list->order = LIST_ORDER_SEQUENTIAL;
-  list->linked = true;
-  list->speed = descriptor.speed;
-  list->lifeMillis = descriptor.lifeMillis;
-  list->length = scaledLength;
-  list->visible = true;
-  list->editable = false;
-  list->emitter = nullptr;
-  list->model = descriptor.model;
-  applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
-  list->init(scaledNumLights);
-  if (list->numLights != scaledNumLights || list->lights == nullptr) {
-    delete list;
-    return nullptr;
-  }
-  list->numEmitted = scaledNumLights;
-
-  for (size_t i = 0; i < entries.size(); i++) {
-    const SequentialEntry& entry = entries[i];
-    if (entry.lightIdx >= senderNumLights) {
-      continue;
-    }
-
-    const uint16_t scaledLightIdx = mapLightIndexByDensity(entry.lightIdx, senderNumLights, list->numLights);
-    RuntimeLight* existing = (*list)[scaledLightIdx];
-    if (existing != nullptr) {
-      if (existing->getBrightness() >= entry.brightness) {
-        continue;
-      }
-      delete existing;
-      (*list)[scaledLightIdx] = nullptr;
-    }
-
-    uint32_t lightLifeMillis = list->lifeMillis;
-    if (list->speed > 0.0f) {
-      const uint32_t delayFrames =
-          static_cast<uint32_t>(std::ceil((1.0f / list->speed) * static_cast<float>(scaledLightIdx)));
-      lightLifeMillis = addLifeDelayClamped(
-          list->lifeMillis, static_cast<uint32_t>(delayFrames * EmitParams::frameMs()));
-    }
-    Light* light = new (std::nothrow) Light(list, descriptor.speed, lightLifeMillis, scaledLightIdx, entry.brightness);
-    if (light == nullptr) {
+  LightList* list = nullptr;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  try {
+#endif
+    list = new (std::nothrow) LightList();
+    if (list == nullptr) {
       lightgraphReportAllocationFailure(
-          LightgraphAllocationFailureSite::RemoteLightAllocation,
-          scaledLightIdx,
-          list->numLights);
+          LightgraphAllocationFailureSite::RemoteListAllocation,
+          scaledNumLights,
+          scaledLength);
+      return nullptr;
+    }
+    list->order = LIST_ORDER_SEQUENTIAL;
+    list->linked = true;
+    list->speed = descriptor.speed;
+    list->lifeMillis = descriptor.lifeMillis;
+    list->length = scaledLength;
+    list->visible = true;
+    list->editable = false;
+    list->emitter = nullptr;
+    list->model = descriptor.model;
+    applyLightListBehaviour(list, descriptor.hasBehaviour, descriptor.behaviourFlags, descriptor.colorChangeGroups);
+    list->init(scaledNumLights);
+    if (list->numLights != scaledNumLights || list->lights == nullptr) {
       delete list;
       return nullptr;
     }
-    light->setColor(ColorRGB(entry.colorR, entry.colorG, entry.colorB));
-    light->position = static_cast<float>(scaledPositionOffset) - static_cast<float>(scaledLightIdx);
+    list->numEmitted = scaledNumLights;
 
-    (*list)[scaledLightIdx] = light;
+    for (size_t i = 0; i < entries.size(); i++) {
+      const SequentialEntry& entry = entries[i];
+      if (entry.lightIdx >= senderNumLights) {
+        continue;
+      }
+
+      const uint16_t scaledLightIdx = mapLightIndexByDensity(entry.lightIdx, senderNumLights, list->numLights);
+      RuntimeLight* existing = (*list)[scaledLightIdx];
+      if (existing != nullptr) {
+        if (existing->getBrightness() >= entry.brightness) {
+          continue;
+        }
+        delete existing;
+        (*list)[scaledLightIdx] = nullptr;
+      }
+
+      uint32_t lightLifeMillis = list->lifeMillis;
+      if (list->speed > 0.0f) {
+        const uint32_t delayFrames =
+            static_cast<uint32_t>(std::ceil((1.0f / list->speed) * static_cast<float>(scaledLightIdx)));
+        lightLifeMillis = addLifeDelayClamped(
+            list->lifeMillis, static_cast<uint32_t>(delayFrames * EmitParams::frameMs()));
+      }
+      Light* light = new (std::nothrow) Light(list, descriptor.speed, lightLifeMillis, scaledLightIdx, entry.brightness);
+      if (light == nullptr) {
+        lightgraphReportAllocationFailure(
+            LightgraphAllocationFailureSite::RemoteLightAllocation,
+            scaledLightIdx,
+            list->numLights);
+        delete list;
+        return nullptr;
+      }
+      light->setColor(ColorRGB(entry.colorR, entry.colorG, entry.colorB));
+      light->position = static_cast<float>(scaledPositionOffset) - static_cast<float>(scaledLightIdx);
+
+      (*list)[scaledLightIdx] = light;
+    }
+
+    return list;
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+  } catch (const std::bad_alloc&) {
+    delete list;
+    lightgraphReportAllocationFailure(
+        LightgraphAllocationFailureSite::RemoteLightAllocation,
+        scaledNumLights,
+        static_cast<uint16_t>(entries.size()));
+    return nullptr;
+  } catch (...) {
+    delete list;
+    return nullptr;
   }
-
-  return list;
+#endif
 }
 
 }  // namespace remote_snapshot

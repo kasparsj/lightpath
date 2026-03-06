@@ -15,9 +15,9 @@ using TopologyIntersectionSnapshot = ::TopologyIntersectionSnapshot;
 using TopologyConnectionSnapshot = ::TopologyConnectionSnapshot;
 using TopologyPortSnapshot = ::TopologyPortSnapshot;
 using TopologyModelSnapshot = ::TopologyModelSnapshot;
-using TopologyWeightSnapshot = ::TopologyWeightSnapshot;
+using TopologyWeightSnapshot = ::TopologyPortWeightSnapshot;
 using TopologyWeightConditionalSnapshot = ::TopologyWeightConditionalSnapshot;
-using TopologyGapSnapshot = ::TopologyGapSnapshot;
+using TopologyGapSnapshot = ::PixelGap;
 using TopologyPortType = ::TopologyPortType;
 
 namespace layer_json = ::lightgraph_layer_json;
