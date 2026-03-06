@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../Globals.h"
 #include "../core/Types.h"
 #include "../core/Limits.h"
 
