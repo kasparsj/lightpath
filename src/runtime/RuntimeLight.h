@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../Globals.h"
 #include "../core/Types.h"
 #include "../core/Limits.h"
 #include "../../vendor/ofxEasing/ofxEasing.h"
