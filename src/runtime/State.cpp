@@ -595,7 +595,9 @@ void State::colorAll() {
     color.setRandom();
     for (uint8_t i=0; i<MAX_LIGHT_LISTS; i++) {
         if (lightLists[i] == NULL) continue;
-        lightLists[i]->palette.setColors({color});
+        Palette updatedPalette = lightLists[i]->getPalette();
+        updatedPalette.setColors({color});
+        lightLists[i]->setPalette(updatedPalette);
     }
 }
 

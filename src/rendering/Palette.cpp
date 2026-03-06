@@ -201,6 +201,7 @@ void Palette::generateDefaultPositions() {
 void Palette::updateRGBColors() {
     rgbColors.clear();
     generateColors();
+    rgbCacheDirty = false;
 }
 
 int8_t Palette::getColorRule() const {
