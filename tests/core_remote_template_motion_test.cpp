@@ -109,45 +109,6 @@ struct DeviceFixture {
     ExternalPort* externalPort = nullptr;
 };
 
-class TestRemoteIngressEmitter : public Owner {
-  public:
-    TestRemoteIngressEmitter() : Owner(0) {}
-
-    void bind(InternalPort* port) {
-        targetPort_ = port;
-        group = (port != nullptr) ? port->group : 0;
-    }
-
-    uint8_t getType() override { return TYPE_CONNECTION; }
-
-    void emit(RuntimeLight* const light) const override {
-        if (targetPort_ == nullptr || light == nullptr || targetPort_->connection == nullptr) {
-            if (light != nullptr) {
-                light->isExpired = true;
-                light->owner = nullptr;
-            }
-            return;
-        }
-
-        if (light->outPort == nullptr) {
-            const int8_t intersectionId =
-                (targetPort_->intersection != nullptr) ? static_cast<int8_t>(targetPort_->intersection->id) : -1;
-            light->setOutPort(targetPort_, intersectionId);
-        }
-
-        if (targetPort_->intersection != nullptr) {
-            targetPort_->intersection->add(light);
-            return;
-        }
-        targetPort_->connection->add(light);
-    }
-
-    void update(RuntimeLight* const) const override {}
-
-  private:
-    InternalPort* targetPort_ = nullptr;
-};
-
 void normalizeRemoteSnapshotListForIngress(LightList* list) {
     if (list == nullptr) {
         return;
@@ -166,10 +127,19 @@ void normalizeRemoteSnapshotListForIngress(LightList* list) {
     }
 }
 
+Owner* resolveIngressOwnerForTest(InternalPort* targetPort) {
+    if (targetPort == nullptr) {
+        return nullptr;
+    }
+    if (targetPort->intersection != nullptr) {
+        return targetPort->intersection;
+    }
+    return targetPort->connection;
+}
+
 struct TemplateTransportContext {
     State* remoteState = nullptr;
     InternalPort* remoteTargetPort = nullptr;
-    TestRemoteIngressEmitter ingressEmitter = {};
     uint8_t remoteSlot = kRemoteSlot;
     uint8_t expectedTargetPortId = kExpectedRemoteTargetPortId;
     uint8_t senderPixelDensity = kPixelDensity;
@@ -288,8 +258,25 @@ bool sendLightViaESPNowTemplateHook(const uint8_t*,
     }
 
     normalizeRemoteSnapshotListForIngress(remoteList);
-    context->ingressEmitter.bind(context->remoteTargetPort);
-    context->remoteState->activateList(&context->ingressEmitter, remoteList, 0, false);
+    Owner* ingressOwner = resolveIngressOwnerForTest(context->remoteTargetPort);
+    if (ingressOwner == nullptr) {
+        delete remoteList;
+        context->lastError = "remote ingress owner was not resolved";
+        return false;
+    }
+
+    context->remoteState->activateList(ingressOwner, remoteList, 0, false);
+    const int8_t intersectionId =
+        (context->remoteTargetPort != nullptr && context->remoteTargetPort->intersection != nullptr)
+            ? static_cast<int8_t>(context->remoteTargetPort->intersection->id)
+            : -1;
+    for (uint16_t i = 0; i < remoteList->numLights; ++i) {
+        RuntimeLight* remoteLight = (*remoteList)[i];
+        if (remoteLight == nullptr || context->remoteTargetPort == nullptr) {
+            continue;
+        }
+        remoteLight->setOutPort(context->remoteTargetPort, intersectionId);
+    }
     if (!context->remoteState->replaceListSlot(context->remoteSlot, remoteList)) {
         context->lastError = "remote slot replacement failed";
         return false;
@@ -404,6 +391,11 @@ int main() {
                 ::sendLightViaESPNow = nullptr;
                 gTemplateTransportContext = nullptr;
                 return fail("Template forwarding should materialize a remote list");
+            }
+            if (remoteList->emitter != resolveIngressOwnerForTest(transport.remoteTargetPort)) {
+                ::sendLightViaESPNow = nullptr;
+                gTemplateTransportContext = nullptr;
+                return fail("Template forwarding should retain the real ingress owner as the list emitter");
             }
             if (remoteList->lead != expectedLead || remoteList->trail != expectedTrail) {
                 ::sendLightViaESPNow = nullptr;
@@ -533,6 +525,68 @@ int main() {
     }
     if (expectedTransferFrames == 0 || checkedTransferFrames != expectedTransferFrames) {
         return fail("Template handoff did not complete the expected per-frame tail transfer");
+    }
+
+    {
+        gMillis = 0;
+        LightList::nextId = 0;
+        Intersection::nextId = 0;
+        Port::setNextId(0);
+
+        std::unique_ptr<DeviceFixture> remoteSparse = makeDevice154Fixture();
+        InternalPort* ingressPort = static_cast<InternalPort*>(remoteSparse->conn02->toPort);
+        if (ingressPort == nullptr || ingressPort->connection == nullptr) {
+            return fail("Sparse replay regression fixture did not resolve a valid ingress connection");
+        }
+
+        remote_snapshot::SequentialSnapshotDescriptor descriptor = {};
+        descriptor.numLights = 8;
+        descriptor.positionOffset = -8;
+        descriptor.speed = 1.0f;
+        descriptor.lifeMillis = INFINITE_DURATION;
+        descriptor.model = remoteSparse->object.getModel(0);
+        descriptor.senderPixelDensity = kPixelDensity;
+        descriptor.receiverPixelDensity = kPixelDensity;
+
+        std::vector<remote_snapshot::SequentialEntry> entries(1);
+        entries[0].lightIdx = 0;
+        entries[0].brightness = FULL_BRIGHTNESS;
+        entries[0].colorR = 0x38;
+        entries[0].colorG = 0xC1;
+        entries[0].colorB = 0x72;
+
+        std::unique_ptr<LightList> sparseSnapshot(remote_snapshot::buildSequentialSnapshot(descriptor, entries));
+        if (sparseSnapshot == nullptr) {
+            return fail("Sparse replay regression fixture failed to build the snapshot list");
+        }
+
+        const int8_t intersectionId =
+            (ingressPort->intersection != nullptr) ? static_cast<int8_t>(ingressPort->intersection->id) : -1;
+        sparseSnapshot->bindRuntimeContext(remoteSparse->object.runtimeContext());
+        sparseSnapshot->emitOffset = 0;
+        sparseSnapshot->numSplits = 0;
+        sparseSnapshot->emitter = resolveIngressOwnerForTest(ingressPort);
+
+        RuntimeLight* latentLight = (*sparseSnapshot)[0];
+        if (latentLight == nullptr) {
+            return fail("Sparse replay regression fixture did not allocate the latent edge light");
+        }
+        if (latentLight->position >= 0.0f) {
+            return fail("Sparse replay regression fixture expected a negative-position latent light");
+        }
+
+        latentLight->owner = nullptr;
+        latentLight->isExpired = false;
+        latentLight->setInPort(nullptr);
+        latentLight->setOutPort(ingressPort, intersectionId);
+        ingressPort->connection->add(latentLight);
+
+        if (latentLight->owner != ingressPort->connection) {
+            return fail("Sparse replay latent light should stay owned by the ingress connection");
+        }
+        if (latentLight->pixel1 >= 0) {
+            return fail("Sparse replay latent light should not render before reaching the strip");
+        }
     }
 
     return 0;

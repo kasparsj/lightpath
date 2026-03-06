@@ -215,6 +215,13 @@ void State::activateList(Owner* from, LightList *lightList, uint8_t emitOffset, 
         return;
     }
     lightList->bindRuntimeContext(object.runtimeContext());
+    if (lightList->duration > 0) {
+        // Rebase finite durations against the bound topology clock. Lists are
+        // constructed before they have a runtime context, so without this they
+        // inherit timestamps from the default global context and can expire
+        // immediately on long-running devices.
+        lightList->setDuration(lightList->duration);
+    }
     lightList->emitOffset = emitOffset;
     lightList->numEmitted = 0;
     lightList->numSplits = 0;

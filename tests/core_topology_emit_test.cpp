@@ -414,6 +414,39 @@ int main() {
         }
     }
 
+    // Regression: finite-duration sequential lists emitted after long device uptime should still
+    // leave the source intersection instead of expiring at the handoff boundary.
+    {
+        Line line(30);
+        State state(line);
+        state.lightLists[0]->visible = false;
+
+        gMillis = 5000;
+        line.setNowMillis(gMillis);
+
+        EmitParams params(L_BOUNCE, 1.0f, 0x22CC44);
+        params.setLength(6);
+        params.duration = 1000;
+        params.from = findIntersectionIndexByTopPixel(line, 0);
+        if (params.from < 0) {
+            return fail("Unable to resolve line intersection for duration rebase regression");
+        }
+
+        if (state.emit(params) < 0) {
+            return fail("Finite-duration emit failed unexpectedly after long uptime");
+        }
+
+        for (uint8_t frame = 0; frame < 4; ++frame) {
+            gMillis += 16;
+            line.setNowMillis(gMillis);
+            state.update();
+        }
+
+        if (countLitPixels(state, 1, 6) == 0) {
+            return fail("Finite-duration sequential emit should advance onto the outgoing connection after long uptime");
+        }
+    }
+
     // Emit scenario: connection emission + offset should start on shifted physical LED.
     {
         Line line(30);

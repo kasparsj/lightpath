@@ -160,6 +160,9 @@ void Connection::update(RuntimeLight* const light) const {
         light->owner = NULL;
         return;
     }
+    if (light->position < 0.0f) {
+        return;
+    }
     if (render(light)) {
         return;
     }

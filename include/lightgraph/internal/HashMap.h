@@ -1,3 +1,3 @@
 #pragma once
 
-#include "../../../src/HashMap.h"
+#include "src/HashMap.h"

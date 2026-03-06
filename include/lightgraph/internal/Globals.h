@@ -1,3 +1,3 @@
 #pragma once
 
-#include "../../../src/Globals.h"
+#include "src/Globals.h"
