@@ -181,7 +181,16 @@ bool Connection::render(RuntimeLight* const light) const {
 
         const int32_t nextLogicalIndex = logicalIndex + 1;
         if (nextLogicalIndex >= static_cast<int32_t>(numLeds)) {
-            light->setRenderedPixel(primaryPixel);
+            const uint8_t secondaryWeight = static_cast<uint8_t>(std::clamp<int32_t>(
+                static_cast<int32_t>(round(frac * FULL_BRIGHTNESS)),
+                0,
+                FULL_BRIGHTNESS));
+            const Intersection* destination = reverseDirection ? from : to;
+            if (secondaryWeight == 0 || destination == nullptr) {
+                light->setRenderedPixel(primaryPixel);
+                return true;
+            }
+            light->setRenderedPixels(primaryPixel, destination->topPixel, secondaryWeight);
             return true;
         }
 

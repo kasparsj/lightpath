@@ -505,6 +505,25 @@ int main() {
         if (!isApproxColor(state.getPixel(6), 0, 204, 0, 1) || isNonBlack(state.getPixel(7))) {
             return fail("Exact integer connection positions should render on a single LED");
         }
+
+        const uint16_t finalConnectionPixel = connection->getPixel(connection->numLeds - 1);
+        const uint16_t destinationIntersectionPixel = connection->to->topPixel;
+        light->owner = connection;
+        light->position = static_cast<float>(connection->numLeds) - 0.75f;
+        light->setOutPort(connection->fromPort, static_cast<int8_t>(connection->from->id));
+        state.update();
+
+#if LIGHTGRAPH_FRACTIONAL_RENDERING
+        if (!isApproxColor(state.getPixel(finalConnectionPixel), 0, 153, 0, 1) ||
+            !isApproxColor(state.getPixel(destinationIntersectionPixel), 0, 51, 0, 1)) {
+            return fail("Fractional arrival should blend between the last connection LED and destination intersection");
+        }
+#else
+        if (!isApproxColor(state.getPixel(finalConnectionPixel), 0, 204, 0, 1) ||
+            isNonBlack(state.getPixel(destinationIntersectionPixel))) {
+            return fail("Compatibility build should keep connection arrival snapped to the final LED");
+        }
+#endif
     }
 
     // Fractional intersection handoff should either blend into the first outgoing LED or remain snapped
