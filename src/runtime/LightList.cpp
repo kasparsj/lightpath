@@ -3,75 +3,10 @@
 #include "../core/Platform.h"
 #include "../topology/Model.h"
 #include "../Globals.h"
-#include <cstddef>
 #include <cstdlib>
 #include <new>
 #include <stdio.h>
-#include <type_traits>
 #include <vector>
-
-namespace {
-
-constexpr size_t kMsgLightPoolSize = 384;
-constexpr size_t kMsgLightObjectSize =
-    (sizeof(Light) > sizeof(RuntimeLight)) ? sizeof(Light) : sizeof(RuntimeLight);
-constexpr size_t kMsgLightObjectAlign =
-    (alignof(Light) > alignof(RuntimeLight)) ? alignof(Light) : alignof(RuntimeLight);
-
-struct MsgLightSlot {
-    bool inUse = false;
-    bool isLight = false;
-    typename std::aligned_storage<kMsgLightObjectSize, kMsgLightObjectAlign>::type storage;
-};
-
-MsgLightSlot gMsgLightPool[kMsgLightPoolSize];
-
-RuntimeLight* tryAcquireMsgLightFromPool(LightList* list, const LightMessage* lightMsg, bool useLightType) {
-    for (size_t i = 0; i < kMsgLightPoolSize; i++) {
-        MsgLightSlot& slot = gMsgLightPool[i];
-        if (slot.inUse) {
-            continue;
-        }
-
-        slot.inUse = true;
-        slot.isLight = useLightType;
-        void* storage = static_cast<void*>(&slot.storage);
-        if (useLightType) {
-            return new (storage) Light(list, lightMsg->speed, lightMsg->life, lightMsg->lightIdx, lightMsg->brightness);
-        }
-        return new (storage) RuntimeLight(list, lightMsg->lightIdx, lightMsg->brightness);
-    }
-
-    return NULL;
-}
-
-bool releaseMsgLightToPool(RuntimeLight* light) {
-    if (light == NULL) {
-        return false;
-    }
-
-    uint8_t* const lightPtr = reinterpret_cast<uint8_t*>(light);
-    for (size_t i = 0; i < kMsgLightPoolSize; i++) {
-        MsgLightSlot& slot = gMsgLightPool[i];
-        uint8_t* const slotPtr = reinterpret_cast<uint8_t*>(&slot.storage);
-        if (!slot.inUse || slotPtr != lightPtr) {
-            continue;
-        }
-
-        if (slot.isLight) {
-            static_cast<Light*>(light)->~Light();
-        } else {
-            static_cast<RuntimeLight*>(light)->~RuntimeLight();
-        }
-        slot.isLight = false;
-        slot.inUse = false;
-        return true;
-    }
-
-    return false;
-}
-
-} // namespace
 
 uint16_t LightList::nextId = 0;
 
@@ -223,32 +158,12 @@ Light* LightList::createContiguousLight(uint16_t slot, float speed, uint32_t lif
     return light;
 }
 
-RuntimeLight* LightList::addLightFromMsg(const LightMessage* lightMsg) {
-    if (lightMsg == NULL) {
-        return NULL;
-    }
-    return tryAcquireMsgLightFromPool(this, lightMsg, behaviour != NULL);
-}
-
 RuntimeLight* LightList::createAutoLight(uint16_t slot, uint8_t brightness) {
     return createLight(slot, brightness);
 }
 
-void LightList::releaseLightFromMsg(RuntimeLight* light) {
-    if (light == NULL) {
-        return;
-    }
-    if (!releaseMsgLightToPool(light)) {
-        delete light;
-    }
-}
-
 void LightList::releaseOwnedLight(RuntimeLight*& light) {
     if (light == NULL) {
-        return;
-    }
-    if (releaseMsgLightToPool(light)) {
-        light = NULL;
         return;
     }
     if (ownsContiguousLight(light)) {

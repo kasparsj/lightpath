@@ -17,19 +17,6 @@ class Model;
 class Light;
 class Owner;
 
-typedef struct {
-  uint8_t messageType;
-  uint8_t portId;
-  uint16_t listId;
-  uint16_t lightIdx;
-  uint8_t brightness;
-  uint8_t colorR;
-  uint8_t colorG;
-  uint8_t colorB;
-  float speed;
-  uint32_t life;
-} LightMessage;
-
 class LightList {
 
   public:
@@ -196,8 +183,6 @@ class LightList {
     // Set the position of the light list (moves all lights by the offset)
     virtual void setOffset(float newPosition);
     
-    RuntimeLight* addLightFromMsg(const LightMessage* lightMsg);
-    static void releaseLightFromMsg(RuntimeLight* light);
     RuntimeLight* createAutoLight(uint16_t slot, uint8_t brightness);
     void releaseOwnedLight(RuntimeLight*& light);
     bool initContiguousLights(uint16_t numLights);
