@@ -204,6 +204,7 @@ void State::activateList(Owner* from, LightList *lightList, uint8_t emitOffset, 
     if (lightList == NULL) {
         return;
     }
+    lightList->emitOffset = emitOffset;
     lightList->numEmitted = 0;
     lightList->numSplits = 0;
     lightList->initEmit(emitOffset);

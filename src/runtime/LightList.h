@@ -67,6 +67,7 @@ class LightList {
     bool editable = false;
     BlendMode blendMode = BLEND_NORMAL;
     uint32_t duration = 1000;
+    uint8_t emitOffset = 0;
     bool externalBatchForwarded = false;
     uint8_t externalBatchDevice[6] = {0};
     uint8_t externalBatchTargetId = 0;
@@ -103,6 +104,7 @@ class LightList {
       visible = other.visible;
       editable = other.editable;
       blendMode = other.blendMode;
+      emitOffset = other.emitOffset;
       
       // Deep copy behaviour if it exists
       if (other.behaviour != NULL) {

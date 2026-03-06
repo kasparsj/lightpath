@@ -411,6 +411,10 @@ int main() {
         if (state.lightLists[wideIndex]->emitter != &ingressOwner) {
             return fail("State::activateList should attach the provided emitter");
         }
+        state.activateList(&ingressOwner, state.lightLists[wideIndex], 7, false);
+        if (state.lightLists[wideIndex]->emitOffset != 7) {
+            return fail("State::activateList should persist emitOffset on the list");
+        }
         state.lightLists[wideIndex]->emitter = originalEmitter;
 
         state.stopNote(300);

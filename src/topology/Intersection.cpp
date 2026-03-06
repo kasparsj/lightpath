@@ -119,9 +119,10 @@ void Intersection::update(RuntimeLight* const light) const {
         if (port != NULL) {
             bool sendList = false;
             if (port->isExternal() && light->list != nullptr) {
-                // Let the first sequential light that reaches an external port
-                // trigger a batch send. ExternalPort dedupes per list+target.
-                sendList = (light->list->order == LIST_ORDER_SEQUENTIAL);
+                // Let the first light that actually exits through the external port
+                // trigger a list-level send. Sequential lists may already have been
+                // pre-forwarded above for overlap.
+                sendList = true;
             }
             port->sendOut(light, sendList);
         }

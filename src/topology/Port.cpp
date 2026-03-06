@@ -137,7 +137,7 @@ void ExternalPort::sendOut(RuntimeLight* const light, bool sendList) {
     }
 
     LightList* const list = light->list;
-    const bool canBatch = sendList && list != nullptr && list->order == LIST_ORDER_SEQUENTIAL;
+    const bool canBatch = sendList && list != nullptr;
     bool sendAsBatch = false;
     bool shouldSend = true;
     if (canBatch) {
